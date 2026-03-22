@@ -18,11 +18,10 @@ import java.util.concurrent.TimeUnit
  */
 object CTraderApiService {
 
-    // ─── Your app credentials from https://connect.spotware.com ─────────
-    private const val CLIENT_ID     = "TODO_YOUR_CLIENT_ID"
-    private const val CLIENT_SECRET = "TODO_YOUR_CLIENT_SECRET"
+    // Credentials are injected at build time from local.properties (gitignored)
+    private val CLIENT_ID     get() = BuildConfig.CTRADER_CLIENT_ID
+    private val CLIENT_SECRET get() = BuildConfig.CTRADER_CLIENT_SECRET
     const val REDIRECT_URI          = "http://localhost/callback"
-    // ─────────────────────────────────────────────────────────────────────
 
     private const val AUTH_URL  = "https://connect.spotware.com/apps/auth"
     private const val TOKEN_URL = "https://connect.spotware.com/apps/token"

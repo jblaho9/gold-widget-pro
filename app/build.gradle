@@ -7,12 +7,23 @@ android {
     namespace 'com.goldwidget.pro'
     compileSdk 34
 
+    buildFeatures {
+        buildConfig true
+    }
+
     defaultConfig {
         applicationId "com.goldwidget.pro"
         minSdk 26
         targetSdk 34
         versionCode 1
         versionName "1.0"
+
+        // Read credentials from local.properties (gitignored) — never hardcode secrets
+        def props = new Properties()
+        def localProps = rootProject.file('local.properties')
+        if (localProps.exists()) props.load(localProps.newDataInputStream())
+        buildConfigField "String", "CTRADER_CLIENT_ID",     "\"${props.getProperty('ctrader.client_id', '')}\""
+        buildConfigField "String", "CTRADER_CLIENT_SECRET", "\"${props.getProperty('ctrader.client_secret', '')}\""
     }
 
     applicationVariants.all { variant ->
