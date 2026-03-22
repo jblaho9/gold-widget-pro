@@ -21,7 +21,7 @@ object CTraderApiService {
     // ─── Your app credentials from https://connect.spotware.com ─────────
     private const val CLIENT_ID     = "TODO_YOUR_CLIENT_ID"
     private const val CLIENT_SECRET = "TODO_YOUR_CLIENT_SECRET"
-    const val REDIRECT_URI          = "com.goldwidget.pro://oauth"
+    const val REDIRECT_URI          = "http://localhost/callback"
     // ─────────────────────────────────────────────────────────────────────
 
     private const val AUTH_URL  = "https://connect.spotware.com/apps/auth"

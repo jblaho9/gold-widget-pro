@@ -1,48 +1,94 @@
 package com.goldwidget.pro
 
-import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.browser.customtabs.CustomTabsIntent
 
 class MainActivity : AppCompatActivity() {
+
+    private lateinit var wvOAuth: WebView
+    private lateinit var llOAuth: LinearLayout
+    private lateinit var svMain: ScrollView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        handleDeepLink(intent)
+
+        svMain  = findViewById(R.id.sv_main)
+        llOAuth = findViewById(R.id.ll_oauth)
+        wvOAuth = findViewById(R.id.wv_oauth)
+
+        setupWebView()
         refreshUI()
     }
 
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        handleDeepLink(intent)
-    }
-
-    override fun onResume() {
-        super.onResume()
-        refreshUI()
-    }
-
-    // ── Deep link handler ─────────────────────────────────────────────────
-
-    private fun handleDeepLink(intent: Intent) {
-        val data = intent.data ?: return
-        if (data.scheme == "com.goldwidget.pro" && data.host == "oauth") {
-            val code = data.getQueryParameter("code") ?: run {
-                showToast("Authorization failed — no code received")
-                return
+    override fun onBackPressed() {
+        // If OAuth WebView is visible and can go back, navigate back within it
+        if (llOAuth.visibility == View.VISIBLE) {
+            if (wvOAuth.canGoBack()) {
+                wvOAuth.goBack()
+            } else {
+                cancelOAuth()
             }
-            setStatus("Connecting…")
-            Thread { exchangeCode(code) }.start()
+            return
         }
+        super.onBackPressed()
     }
+
+    // ── WebView setup ─────────────────────────────────────────────────────
+
+    private fun setupWebView() {
+        wvOAuth.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+        }
+        wvOAuth.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                val url = request.url.toString()
+                // Intercept our redirect URI before the WebView tries to load it
+                if (url.startsWith(CTraderApiService.REDIRECT_URI)) {
+                    val uri   = Uri.parse(url)
+                    val code  = uri.getQueryParameter("code")
+                    val error = uri.getQueryParameter("error")
+                    cancelOAuth()   // hide WebView first
+                    if (code != null) {
+                        setStatus("Connecting…")
+                        Thread { exchangeCode(code) }.start()
+                    } else {
+                        showToast("Authorization failed: ${error ?: "cancelled"}")
+                        refreshUI()
+                    }
+                    return true
+                }
+                return false
+            }
+        }
+
+        findViewById<Button>(R.id.btn_cancel_oauth).setOnClickListener { cancelOAuth() }
+    }
+
+    private fun showOAuth() {
+        svMain.visibility  = View.GONE
+        llOAuth.visibility = View.VISIBLE
+        wvOAuth.loadUrl(CTraderApiService.getAuthUrl())
+    }
+
+    private fun cancelOAuth() {
+        llOAuth.visibility = View.GONE
+        svMain.visibility  = View.VISIBLE
+        wvOAuth.stopLoading()
+    }
+
+    // ── Token exchange ────────────────────────────────────────────────────
 
     private fun exchangeCode(code: String) {
         val tokens = CTraderApiService.exchangeCode(code)
@@ -55,7 +101,7 @@ class MainActivity : AppCompatActivity() {
         }
         TokenManager.saveTokens(this, tokens.accessToken, tokens.refreshToken, tokens.expiresIn)
 
-        // Fetch account info and store account ID for the widget
+        // Fetch and save the first trading account so the widget knows which account to poll
         val accounts = CTraderApiService.getTradingAccounts(tokens.accessToken)
         val first = accounts?.firstOrNull()
         if (first != null) {
@@ -73,23 +119,23 @@ class MainActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.tv_status).text =
             if (connected) "Connected" else "Not connected"
 
-        val llInfo   = findViewById<LinearLayout>(R.id.ll_account_info)
-        val btnConn  = findViewById<Button>(R.id.btn_connect)
-        val btnDisc  = findViewById<Button>(R.id.btn_disconnect)
+        val llInfo  = findViewById<LinearLayout>(R.id.ll_account_info)
+        val btnConn = findViewById<Button>(R.id.btn_connect)
+        val btnDisc = findViewById<Button>(R.id.btn_disconnect)
 
         if (connected) {
             llInfo.visibility  = View.VISIBLE
             btnConn.visibility = View.GONE
             btnDisc.visibility = View.VISIBLE
 
-            val broker   = TokenManager.getBrokerName(this) ?: "Unknown broker"
-            val balance  = TokenManager.getBalance(this)
-            val currency = TokenManager.getCurrency(this)
+            val broker    = TokenManager.getBrokerName(this) ?: "Unknown broker"
+            val balance   = TokenManager.getBalance(this)
+            val currency  = TokenManager.getCurrency(this)
             val accountId = TokenManager.getAccountId(this)
-            findViewById<TextView>(R.id.tv_broker).text    = broker
+            findViewById<TextView>(R.id.tv_broker).text     = broker
             findViewById<TextView>(R.id.tv_account_id).text =
                 if (accountId != null) "Account: $accountId" else "Account: —"
-            findViewById<TextView>(R.id.tv_balance).text   =
+            findViewById<TextView>(R.id.tv_balance).text    =
                 "Balance: ${"%.2f".format(balance)} $currency"
         } else {
             llInfo.visibility  = View.GONE
@@ -97,21 +143,12 @@ class MainActivity : AppCompatActivity() {
             btnDisc.visibility = View.GONE
         }
 
-        btnConn.setOnClickListener { openCTraderAuth() }
+        btnConn.setOnClickListener { showOAuth() }
         btnDisc.setOnClickListener { disconnect() }
     }
 
     private fun setStatus(text: String) {
         runOnUiThread { findViewById<TextView>(R.id.tv_status).text = text }
-    }
-
-    private fun openCTraderAuth() {
-        val url = CTraderApiService.getAuthUrl()
-        try {
-            CustomTabsIntent.Builder().build().launchUrl(this, Uri.parse(url))
-        } catch (e: Exception) {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-        }
     }
 
     private fun disconnect() {

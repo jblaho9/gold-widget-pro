@@ -14,18 +14,10 @@
         <!-- Main screen: connect/disconnect cTrader account -->
         <activity
             android:name=".MainActivity"
-            android:exported="true"
-            android:launchMode="singleTask">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            <!-- OAuth2 callback deep link: com.goldwidget.pro://oauth?code=... -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="com.goldwidget.pro" android:host="oauth" />
             </intent-filter>
         </activity>
 
