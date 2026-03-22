@@ -32,6 +32,26 @@ android {
         }
     }
 
+    // After every debug build: copy APK to repo root and push to GitHub
+    tasks.whenTaskAdded { task ->
+        if (task.name == 'assembleDebug') {
+            task.doLast {
+                def apk = file("build/outputs/apk/debug/gold-widget-pro-debug.apk")
+                def dest = rootProject.file("gold-widget-pro-debug.apk")
+                if (apk.exists()) {
+                    copy { from apk; into rootProject.projectDir }
+                    exec {
+                        workingDir rootProject.projectDir
+                        commandLine 'bash', '-c',
+                            'git add gold-widget-pro-debug.apk && ' +
+                            'git diff --cached --quiet && echo "APK unchanged, skipping push." || ' +
+                            '(git commit -m "Update APK" && git push)'
+                    }
+                }
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled true
