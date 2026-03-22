@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:theme="@style/AppTheme">
+
+        <!-- Main screen: connect/disconnect cTrader account -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- OAuth2 callback deep link: com.goldwidget.pro://oauth?code=... -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.goldwidget.pro" android:host="oauth" />
+            </intent-filter>
+        </activity>
+
+        <!-- Simple 2×2 price widget -->
+        <receiver
+            android:name=".SimpleGoldWidget"
+            android:exported="true"
+            android:label="@string/simple_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_simple_info" />
+        </receiver>
+
+        <!-- Detailed 4×2 widget with day stats -->
+        <receiver
+            android:name=".DetailedGoldWidget"
+            android:exported="true"
+            android:label="@string/detailed_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_detailed_info" />
+        </receiver>
+
+        <!-- Trade 4×3 widget: gold price + open XAUUSD trade from cTrader -->
+        <receiver
+            android:name=".TradeGoldWidget"
+            android:exported="true"
+            android:label="@string/trade_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_trade_info" />
+        </receiver>
+
+        <!-- Refresh widget on phone unlock -->
+        <receiver
+            android:name=".ScreenUnlockReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.USER_PRESENT" />
+            </intent-filter>
+        </receiver>
+
+    </application>
+
+</manifest>

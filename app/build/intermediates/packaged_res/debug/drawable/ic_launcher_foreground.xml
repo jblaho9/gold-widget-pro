@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Back bar (darker gold) -->
+    <path
+        android:fillColor="#C8960C"
+        android:pathData="M36,28 L78,28 A4,4 0 0,1 82,32 L82,50 A4,4 0 0,1 78,54 L36,54 A4,4 0 0,1 32,50 L32,32 A4,4 0 0,1 36,28 Z" />
+
+    <!-- Shine on back bar -->
+    <path
+        android:fillColor="#FFE070"
+        android:fillAlpha="0.35"
+        android:pathData="M36,28 L78,28 A4,4 0 0,1 82,32 L82,34 L32,34 L32,32 A4,4 0 0,1 36,28 Z" />
+
+    <!-- Shadow gap -->
+    <path
+        android:fillColor="#0A0800"
+        android:fillAlpha="0.55"
+        android:pathData="M26,52 L82,52 L82,55 L26,55 Z" />
+
+    <!-- Front bar (bright gold) -->
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M30,52 L72,52 A4,4 0 0,1 76,56 L76,74 A4,4 0 0,1 72,78 L30,78 A4,4 0 0,1 26,74 L26,56 A4,4 0 0,1 30,52 Z" />
+
+    <!-- Shine on front bar -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.18"
+        android:pathData="M30,52 L72,52 A4,4 0 0,1 76,56 L76,59 L26,59 L26,56 A4,4 0 0,1 30,52 Z" />
+
+    <!-- Bottom shadow on front bar -->
+    <path
+        android:fillColor="#000000"
+        android:fillAlpha="0.10"
+        android:pathData="M26,72 L76,72 L76,74 A4,4 0 0,1 72,78 L30,78 A4,4 0 0,1 26,74 Z" />
+
+</vector>

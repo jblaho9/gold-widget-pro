@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Gold Widget Pro</string>
+    <string name="simple_widget_name">Gold Price</string>
+    <string name="detailed_widget_name">Gold Price (Detailed)</string>
+    <string name="trade_widget_name">Gold + Trade (cTrader)</string>
+    <string name="simple_widget_desc">Shows current XAUUSD gold price</string>
+    <string name="detailed_widget_desc">Shows gold price with day high, low, open, and previous close</string>
+    <string name="trade_widget_desc">Shows gold price and your open XAUUSD trade from cTrader</string>
+</resources>
