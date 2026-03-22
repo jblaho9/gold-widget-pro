@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gold Widget Pro — Preview</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0908;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 56px;
+    padding: 48px 20px;
+  }
+
+  h1 {
+    color: #FFD700;
+    font-size: 13px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    font-weight: 600;
+    opacity: 0.7;
+  }
+
+  /* ── Phone mockup ── */
+  .phone {
+    width: 375px;
+    background: #111;
+    border-radius: 48px;
+    border: 1.5px solid #222;
+    box-shadow:
+      0 0 0 6px #080808,
+      0 0 0 7.5px #1e1e1e,
+      0 48px 96px rgba(0,0,0,0.85);
+    overflow: hidden;
+    position: relative;
+  }
+  .phone-screen {
+    background:
+      radial-gradient(ellipse at 25% 15%, #1a1100 0%, transparent 55%),
+      radial-gradient(ellipse at 75% 85%, #0d0900 0%, transparent 55%),
+      linear-gradient(160deg, #0e0d0b 0%, #07070600 100%);
+    padding: 64px 14px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 720px;
+  }
+  .status-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 52px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 0 28px 9px;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    z-index: 10;
+  }
+  .status-icons { display: flex; gap: 5px; align-items: center; }
+  .notch {
+    position: absolute;
+    top: 0; left: 50%; transform: translateX(-50%);
+    width: 126px; height: 36px;
+    background: #0a0a0a;
+    border-radius: 0 0 22px 22px;
+  }
+
+  /* ── Widget base ── */
+  .widget {
+    background: linear-gradient(145deg, #1c1a16 0%, #141210 50%, #0c0b09 100%);
+    border: 0.5px solid rgba(255,215,0,0.28);
+    border-radius: 20px;
+    padding: 12px 14px;
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+      0 4px 20px rgba(0,0,0,0.55),
+      inset 0 1px 0 rgba(255,215,0,0.05);
+  }
+  .widget::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    background: radial-gradient(ellipse at 18% 12%, rgba(255,215,0,0.05) 0%, transparent 55%);
+    pointer-events: none;
+  }
+
+  .widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1px;
+  }
+  .lbl-gold { font-size: 11px; font-weight: 700; color: #FFD700; letter-spacing: 0.18em; }
+
+  .pill {
+    font-size: 10px; font-weight: 700;
+    padding: 3px 9px; border-radius: 20px;
+  }
+  .pill-up   { color: #5FD67A; background: rgba(95,214,122,0.13); }
+  .pill-down { color: #F07070; background: rgba(240,112,112,0.13); }
+
+  .price-xl { font-size: 34px; font-weight: 700; color: #fff; letter-spacing: -0.5px; line-height: 1.1; margin: 2px 0 0; }
+  .price-lg { font-size: 28px; font-weight: 700; color: #fff; letter-spacing: -0.5px; line-height: 1.1; margin: 1px 0 0; }
+
+  .divider { height: 1px; background: rgba(255,215,0,0.13); margin: 7px 0; }
+
+  .stats-row { display: flex; }
+  .stat { flex: 1; display: flex; flex-direction: column; gap: 1px; }
+  .stat-lbl { font-size: 7px; color: rgba(255,215,0,0.45); letter-spacing: 0.1em; font-weight: 600; }
+  .stat-val       { font-size: 11px; font-weight: 700; color: #ccc; }
+  .stat-val.up    { color: #5FD67A; }
+  .stat-val.down  { color: #F07070; }
+
+  /* trade section */
+  .trade-divider { height: 1px; background: rgba(255,215,0,0.1); margin: 6px 0 5px; }
+  .trade-row {
+    display: flex; align-items: center; gap: 5px;
+    margin-bottom: 3px;
+  }
+  .trade-lbl { font-size: 7px; color: rgba(255,215,0,0.4); letter-spacing: 0.1em; font-weight: 600; margin-right: 2px; }
+  .side-buy  { font-size: 12px; font-weight: 700; color: #5FD67A; }
+  .side-sell { font-size: 12px; font-weight: 700; color: #F07070; }
+  .trade-symbol { font-size: 12px; font-weight: 700; color: #ddd; }
+  .trade-lots   { font-size: 10px; color: rgba(255,255,255,0.45); margin-left: auto; }
+
+  .entry-row { display: flex; align-items: center; gap: 4px; }
+  .at-lbl    { font-size: 10px; color: rgba(255,215,0,0.4); }
+  .entry-val { font-size: 11px; font-weight: 600; color: #bbb; flex: 1; }
+  .pnl-lbl   { font-size: 10px; color: rgba(255,215,0,0.4); }
+  .pnl-up    { font-size: 12px; font-weight: 700; color: #5FD67A; }
+  .pnl-down  { font-size: 12px; font-weight: 700; color: #F07070; }
+
+  .no-trade  { font-size: 10px; color: rgba(255,255,255,0.28); font-style: italic; padding: 4px 0; }
+
+  /* footer */
+  .footer {
+    display: flex; align-items: center;
+    margin-top: 6px;
+  }
+  .updated { flex: 1; font-size: 8px; color: rgba(255,255,255,0.22); }
+  .btn-refresh {
+    width: 22px; height: 22px;
+    border: none; background: transparent; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; padding: 3px;
+    transition: background 0.15s;
+  }
+  .btn-refresh:hover  { background: rgba(255,255,255,0.07); }
+  .btn-refresh:active { background: rgba(255,255,255,0.14); }
+  .btn-refresh svg { width: 13px; height: 13px; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinning { animation: spin 0.5s linear; }
+
+  /* ── Standalone comparison ── */
+  .section { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 760px; }
+  .section-title { color: #333; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 14px; }
+  .widget-row { display: flex; gap: 14px; width: 100%; justify-content: center; flex-wrap: wrap; }
+  .w-simple   { width: 168px; }
+  .w-detailed { width: 350px; }
+  .w-trade    { width: 350px; }
+</style>
+</head>
+<body>
+
+<h1>Gold Widget Pro</h1>
+
+<!-- ══ Phone mockup ══ -->
+<div class="phone">
+  <div class="notch"></div>
+  <div class="status-bar">
+    <span>9:41</span>
+    <div class="status-icons">
+      <!-- Signal bars -->
+      <svg width="16" height="12" viewBox="0 0 16 12" fill="white">
+        <rect x="0"  y="5"   width="3" height="7"  rx="1" opacity="0.35"/>
+        <rect x="4"  y="3.5" width="3" height="8.5" rx="1" opacity="0.6"/>
+        <rect x="8"  y="2"   width="3" height="10" rx="1" opacity="0.8"/>
+        <rect x="12" y="0"   width="3" height="12" rx="1"/>
+      </svg>
+      <!-- Wifi -->
+      <svg width="15" height="12" viewBox="0 0 15 12" fill="white">
+        <path d="M7.5 2.5C10.5 2.5 13.2 3.8 15 6L13.5 7.2C12.1 5.4 9.9 4.3 7.5 4.3S2.9 5.4 1.5 7.2L0 6C1.8 3.8 4.5 2.5 7.5 2.5Z" opacity="0.5"/>
+        <path d="M7.5 5.5C9.6 5.5 11.5 6.5 12.8 8.1L11.3 9.2C10.3 7.9 9 7.2 7.5 7.2S4.7 7.9 3.7 9.2L2.2 8.1C3.5 6.5 5.4 5.5 7.5 5.5Z" opacity="0.75"/>
+        <circle cx="7.5" cy="11" r="1.5"/>
+      </svg>
+      <!-- Battery -->
+      <svg width="25" height="12" viewBox="0 0 25 12" fill="white">
+        <rect x="0" y="1" width="21" height="10" rx="2.5" stroke="white" stroke-width="1" fill="none" opacity="0.55"/>
+        <rect x="22" y="3.5" width="2.5" height="5" rx="1" opacity="0.55"/>
+        <rect x="1.5" y="2.5" width="16" height="7" rx="1.5" fill="white"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="phone-screen">
+
+    <!-- Simple widget (2×2) -->
+    <div class="widget">
+      <div class="widget-header">
+        <span class="lbl-gold">GOLD</span>
+        <span class="pill pill-up">+0.82%</span>
+      </div>
+      <div class="price-xl">$3,012.45</div>
+      <div class="footer">
+        <span class="updated">9:41 AM</span>
+        <button class="btn-refresh" onclick="doSpin(this)">
+          <svg viewBox="0 0 24 24" fill="rgba(255,255,255,0.4)">
+            <path d="M17.65,6.35C16.2,4.9 14.21,4 12,4c-4.42,0-7.99,3.58-7.99,8s3.57,8 7.99,8c3.73,0 6.84-2.55 7.73-6h-2.08c-.82,2.33-3.04,4-5.65,4-3.31,0-6-2.69-6-6s2.69-6 6-6c1.66,0 3.14.69 4.22,1.78L13,11h7V4l-2.35,2.35z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Detailed widget (4×2) -->
+    <div class="widget">
+      <div class="widget-header">
+        <span class="lbl-gold">GOLD</span>
+        <span class="pill pill-up">+0.82%</span>
+      </div>
+      <div class="price-xl">$3,012.45</div>
+      <div class="divider"></div>
+      <div class="stats-row">
+        <div class="stat"><span class="stat-lbl">HIGH</span><span class="stat-val up">3,024</span></div>
+        <div class="stat"><span class="stat-lbl">LOW</span><span class="stat-val down">2,988</span></div>
+        <div class="stat"><span class="stat-lbl">OPEN</span><span class="stat-val">2,990</span></div>
+        <div class="stat"><span class="stat-lbl">PREV</span><span class="stat-val">2,988</span></div>
+      </div>
+      <div class="footer">
+        <span class="updated">Updated 9:41 AM</span>
+        <button class="btn-refresh" onclick="doSpin(this)">
+          <svg viewBox="0 0 24 24" fill="rgba(255,255,255,0.4)">
+            <path d="M17.65,6.35C16.2,4.9 14.21,4 12,4c-4.42,0-7.99,3.58-7.99,8s3.57,8 7.99,8c3.73,0 6.84-2.55 7.73-6h-2.08c-.82,2.33-3.04,4-5.65,4-3.31,0-6-2.69-6-6s2.69-6 6-6c1.66,0 3.14.69 4.22,1.78L13,11h7V4l-2.35,2.35z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Trade widget (4×3) — BUY trade open -->
+    <div class="widget">
+      <div class="widget-header">
+        <span class="lbl-gold">GOLD</span>
+        <span class="pill pill-up">+0.82%</span>
+      </div>
+      <div class="price-lg">$3,012.45</div>
+      <div class="divider"></div>
+      <div class="stats-row">
+        <div class="stat"><span class="stat-lbl">HIGH</span><span class="stat-val up">3,024</span></div>
+        <div class="stat"><span class="stat-lbl">LOW</span><span class="stat-val down">2,988</span></div>
+        <div class="stat"><span class="stat-lbl">OPEN</span><span class="stat-val">2,990</span></div>
+        <div class="stat"><span class="stat-lbl">PREV</span><span class="stat-val">2,988</span></div>
+      </div>
+      <div class="trade-divider"></div>
+      <div class="trade-row">
+        <span class="trade-lbl">TRADE</span>
+        <span class="side-buy">BUY</span>
+        <span class="trade-symbol">XAUUSD</span>
+        <span class="trade-lots">0.10 lots</span>
+      </div>
+      <div class="entry-row">
+        <span class="at-lbl">@</span>
+        <span class="entry-val">$2,998.10</span>
+        <span class="pnl-lbl">P&L</span>
+        <span class="pnl-up">+$14.35</span>
+      </div>
+      <div class="footer">
+        <span class="updated">Updated 9:41 AM</span>
+        <button class="btn-refresh" onclick="doSpin(this)">
+          <svg viewBox="0 0 24 24" fill="rgba(255,255,255,0.4)">
+            <path d="M17.65,6.35C16.2,4.9 14.21,4 12,4c-4.42,0-7.99,3.58-7.99,8s3.57,8 7.99,8c3.73,0 6.84-2.55 7.73-6h-2.08c-.82,2.33-3.04,4-5.65,4-3.31,0-6-2.69-6-6s2.69-6 6-6c1.66,0 3.14.69 4.22,1.78L13,11h7V4l-2.35,2.35z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ Standalone size comparison ══ -->
+<div class="section">
+  <div class="section-title">All three widgets — size comparison</div>
+  <div class="widget-row">
+
+    <!-- Simple 2×2 -->
+    <div class="widget w-simple">
+      <div class="widget-header">
+        <span class="lbl-gold">GOLD</span>
+        <span class="pill pill-up">+0.82%</span>
+      </div>
+      <div class="price-xl">$3,012.45</div>
+      <div class="footer">
+        <span class="updated">9:41 AM</span>
+        <button class="btn-refresh" onclick="doSpin(this)">
+          <svg viewBox="0 0 24 24" fill="rgba(255,255,255,0.4)">
+            <path d="M17.65,6.35C16.2,4.9 14.21,4 12,4c-4.42,0-7.99,3.58-7.99,8s3.57,8 7.99,8c3.73,0 6.84-2.55 7.73-6h-2.08c-.82,2.33-3.04,4-5.65,4-3.31,0-6-2.69-6-6s2.69-6 6-6c1.66,0 3.14.69 4.22,1.78L13,11h7V4l-2.35,2.35z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Detailed 4×2 -->
+    <div class="widget w-detailed">
+      <div class="widget-header">
+        <span class="lbl-gold">GOLD</span>
+        <span class="pill pill-up">+0.82%</span>
+      </div>
+      <div class="price-xl">$3,012.45</div>
+      <div class="divider"></div>
+      <div class="stats-row">
+        <div class="stat"><span class="stat-lbl">HIGH</span><span class="stat-val up">3,024</span></div>
+        <div class="stat"><span class="stat-lbl">LOW</span><span class="stat-val down">2,988</span></div>
+        <div class="stat"><span class="stat-lbl">OPEN</span><span class="stat-val">2,990</span></div>
+        <div class="stat"><span class="stat-lbl">PREV</span><span class="stat-val">2,988</span></div>
+      </div>
+      <div class="footer">
+        <span class="updated">Updated 9:41 AM</span>
+        <button class="btn-refresh" onclick="doSpin(this)">
+          <svg viewBox="0 0 24 24" fill="rgba(255,255,255,0.4)">
+            <path d="M17.65,6.35C16.2,4.9 14.21,4 12,4c-4.42,0-7.99,3.58-7.99,8s3.57,8 7.99,8c3.73,0 6.84-2.55 7.73-6h-2.08c-.82,2.33-3.04,4-5.65,4-3.31,0-6-2.69-6-6s2.69-6 6-6c1.66,0 3.14.69 4.22,1.78L13,11h7V4l-2.35,2.35z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="height:14px"></div>
+
+  <!-- Trade widget full width -->
+  <div class="widget w-trade">
+    <div class="widget-header">
+      <span class="lbl-gold">GOLD</span>
+      <span class="pill pill-up">+0.82%</span>
+    </div>
+    <div class="price-lg">$3,012.45</div>
+    <div class="divider"></div>
+    <div class="stats-row">
+      <div class="stat"><span class="stat-lbl">HIGH</span><span class="stat-val up">3,024</span></div>
+      <div class="stat"><span class="stat-lbl">LOW</span><span class="stat-val down">2,988</span></div>
+      <div class="stat"><span class="stat-lbl">OPEN</span><span class="stat-val">2,990</span></div>
+      <div class="stat"><span class="stat-lbl">PREV</span><span class="stat-val">2,988</span></div>
+    </div>
+    <div class="trade-divider"></div>
+    <div class="trade-row">
+      <span class="trade-lbl">TRADE</span>
+      <span class="side-buy">BUY</span>
+      <span class="trade-symbol">XAUUSD</span>
+      <span class="trade-lots">0.10 lots</span>
+    </div>
+    <div class="entry-row">
+      <span class="at-lbl">@</span>
+      <span class="entry-val">$2,998.10</span>
+      <span class="pnl-lbl">P&L</span>
+      <span class="pnl-up">+$14.35</span>
+    </div>
+    <div class="footer">
+      <span class="updated">Updated 9:41 AM</span>
+      <button class="btn-refresh" onclick="doSpin(this)">
+        <svg viewBox="0 0 24 24" fill="rgba(255,255,255,0.4)">
+          <path d="M17.65,6.35C16.2,4.9 14.21,4 12,4c-4.42,0-7.99,3.58-7.99,8s3.57,8 7.99,8c3.73,0 6.84-2.55 7.73-6h-2.08c-.82,2.33-3.04,4-5.65,4-3.31,0-6-2.69-6-6s2.69-6 6-6c1.66,0 3.14.69 4.22,1.78L13,11h7V4l-2.35,2.35z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- SELL trade variant -->
+  <div style="height:14px"></div>
+  <div class="section-title" style="margin-top:8px">Trade widget — SELL example</div>
+  <div class="widget w-trade">
+    <div class="widget-header">
+      <span class="lbl-gold">GOLD</span>
+      <span class="pill pill-down">−0.45%</span>
+    </div>
+    <div class="price-lg">$2,974.20</div>
+    <div class="divider"></div>
+    <div class="stats-row">
+      <div class="stat"><span class="stat-lbl">HIGH</span><span class="stat-val up">3,002</span></div>
+      <div class="stat"><span class="stat-lbl">LOW</span><span class="stat-val down">2,968</span></div>
+      <div class="stat"><span class="stat-lbl">OPEN</span><span class="stat-val">2,988</span></div>
+      <div class="stat"><span class="stat-lbl">PREV</span><span class="stat-val">2,988</span></div>
+    </div>
+    <div class="trade-divider"></div>
+    <div class="trade-row">
+      <span class="trade-lbl">TRADE</span>
+      <span class="side-sell">SELL</span>
+      <span class="trade-symbol">XAUUSD</span>
+      <span class="trade-lots">0.20 lots</span>
+    </div>
+    <div class="entry-row">
+      <span class="at-lbl">@</span>
+      <span class="entry-val">$2,990.50</span>
+      <span class="pnl-lbl">P&L</span>
+      <span class="pnl-up">+$32.60</span>
+    </div>
+    <div class="footer">
+      <span class="updated">Updated 9:41 AM</span>
+      <button class="btn-refresh" onclick="doSpin(this)">
+        <svg viewBox="0 0 24 24" fill="rgba(255,255,255,0.4)">
+          <path d="M17.65,6.35C16.2,4.9 14.21,4 12,4c-4.42,0-7.99,3.58-7.99,8s3.57,8 7.99,8c3.73,0 6.84-2.55 7.73-6h-2.08c-.82,2.33-3.04,4-5.65,4-3.31,0-6-2.69-6-6s2.69-6 6-6c1.66,0 3.14.69 4.22,1.78L13,11h7V4l-2.35,2.35z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function doSpin(btn) {
+    const svg = btn.querySelector('svg');
+    svg.classList.remove('spinning');
+    void svg.offsetWidth;
+    svg.classList.add('spinning');
+    svg.addEventListener('animationend', () => svg.classList.remove('spinning'), { once: true });
+  }
+</script>
+</body>
+</html>
