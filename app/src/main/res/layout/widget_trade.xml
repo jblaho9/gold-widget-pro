@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/widget_background"
-    android:padding="12dp">
+    android:padding="14dp">
 
     <!-- Header: GOLD left, pause + pill right -->
     <LinearLayout
@@ -19,16 +19,16 @@
             android:layout_weight="1"
             android:text="GOLD"
             android:textColor="#FFD700"
-            android:textSize="15sp"
+            android:textSize="17sp"
             android:textStyle="bold" />
 
         <ImageView
             android:id="@+id/iv_market_closed"
-            android:layout_width="18dp"
-            android:layout_height="18dp"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
             android:src="@drawable/ic_pause"
             android:visibility="gone"
-            android:layout_marginEnd="6dp" />
+            android:layout_marginEnd="7dp" />
 
         <TextView
             android:id="@+id/tv_change"
@@ -36,13 +36,13 @@
             android:layout_height="wrap_content"
             android:text=""
             android:textColor="@color/price_up"
-            android:textSize="12sp"
+            android:textSize="13sp"
             android:textStyle="bold"
             android:background="@drawable/pill_up"
-            android:paddingStart="9dp"
-            android:paddingEnd="9dp"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp" />
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp" />
 
     </LinearLayout>
 
@@ -53,12 +53,12 @@
         android:layout_height="wrap_content"
         android:text=""
         android:textColor="#FFFFFF"
-        android:textSize="30sp"
+        android:textSize="32sp"
         android:textStyle="bold"
-        android:layout_marginTop="2dp" />
+        android:layout_marginTop="4dp" />
 
     <!-- Hairline divider -->
-    <View
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:background="#30FFD700"
@@ -72,158 +72,148 @@
         android:orientation="horizontal">
 
         <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="HIGH" android:textColor="#60FFD700" android:textSize="7sp" />
-            <TextView android:id="@+id/tv_high" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textColor="@color/price_up" android:textSize="11sp" android:textStyle="bold" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="HIGH" android:textColor="#60FFD700" android:textSize="8sp" />
+            <TextView android:id="@+id/tv_high" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textColor="@color/price_up" android:textSize="12sp" android:textStyle="bold" />
         </LinearLayout>
 
         <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="LOW" android:textColor="#60FFD700" android:textSize="7sp" />
-            <TextView android:id="@+id/tv_low" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textColor="@color/price_down" android:textSize="11sp" android:textStyle="bold" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="LOW" android:textColor="#60FFD700" android:textSize="8sp" />
+            <TextView android:id="@+id/tv_low" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textColor="@color/price_down" android:textSize="12sp" android:textStyle="bold" />
         </LinearLayout>
 
         <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="OPEN" android:textColor="#60FFD700" android:textSize="7sp" />
-            <TextView android:id="@+id/tv_open" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textColor="#CCCCCC" android:textSize="11sp" android:textStyle="bold" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="OPEN" android:textColor="#60FFD700" android:textSize="8sp" />
+            <TextView android:id="@+id/tv_open" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textColor="#CCCCCC" android:textSize="12sp" android:textStyle="bold" />
         </LinearLayout>
 
         <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="PREV" android:textColor="#60FFD700" android:textSize="7sp" />
-            <TextView android:id="@+id/tv_prev_close" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textColor="#CCCCCC" android:textSize="11sp" android:textStyle="bold" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="PREV" android:textColor="#60FFD700" android:textSize="8sp" />
+            <TextView android:id="@+id/tv_prev_close" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textColor="#CCCCCC" android:textSize="12sp" android:textStyle="bold" />
         </LinearLayout>
 
     </LinearLayout>
 
-    <!-- Divider before trade section -->
-    <View
+    <!-- Divider before trade -->
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:background="#20FFD700"
-        android:layout_marginTop="5dp"
-        android:layout_marginBottom="4dp" />
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="5dp" />
 
-    <!-- TRADE SECTION: spacer fills remaining height so trade sits above footer -->
+    <!-- Active trade info (GONE when no open trade) -->
     <LinearLayout
+        android:id="@+id/ll_trade"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:gravity="center_vertical">
+        android:visibility="gone">
 
-        <!-- Active trade info (GONE when no open trade) -->
+        <!-- Row 1: Side + Symbol + Volume -->
         <LinearLayout
-            android:id="@+id/ll_trade"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:visibility="gone">
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
-            <!-- Row 1: Side + Symbol + Volume -->
-            <LinearLayout
-                android:layout_width="match_parent"
+            <TextView
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:text="TRADE "
+                android:textColor="#50FFD700"
+                android:textSize="8sp" />
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="TRADE"
-                    android:textColor="#50FFD700"
-                    android:textSize="8sp"
-                    android:layout_marginEnd="6dp" />
-
-                <TextView
-                    android:id="@+id/tv_trade_side"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="BUY"
-                    android:textColor="@color/price_up"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/tv_trade_symbol"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text=" XAUUSD"
-                    android:textColor="#DDDDDD"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/tv_trade_lots"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0.10 lots"
-                    android:textColor="#80FFFFFF"
-                    android:textSize="11sp" />
-
-            </LinearLayout>
-
-            <!-- Row 2: Entry price + P&L -->
-            <LinearLayout
-                android:layout_width="match_parent"
+            <TextView
+                android:id="@+id/tv_trade_side"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginTop="3dp">
+                android:text="BUY"
+                android:textColor="@color/price_up"
+                android:textSize="13sp"
+                android:textStyle="bold" />
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@ "
-                    android:textColor="#50FFD700"
-                    android:textSize="11sp" />
+            <TextView
+                android:id="@+id/tv_trade_symbol"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text=" XAUUSD"
+                android:textColor="#DDDDDD"
+                android:textSize="13sp"
+                android:textStyle="bold" />
 
-                <TextView
-                    android:id="@+id/tv_trade_entry"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="—"
-                    android:textColor="#CCCCCC"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="P&amp;L "
-                    android:textColor="#50FFD700"
-                    android:textSize="11sp" />
-
-                <TextView
-                    android:id="@+id/tv_trade_pnl"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="+$0.00"
-                    android:textColor="@color/price_up"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-
-            </LinearLayout>
+            <TextView
+                android:id="@+id/tv_trade_lots"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0.10 lots"
+                android:textColor="#80FFFFFF"
+                android:textSize="11sp" />
 
         </LinearLayout>
 
-        <!-- No trade / not connected (VISIBLE by default) -->
-        <TextView
-            android:id="@+id/tv_no_trade"
-            android:layout_width="wrap_content"
+        <!-- Row 2: Entry + P&L -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="----"
-            android:textColor="#60FFFFFF"
-            android:textSize="13sp"
-            android:visibility="visible" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="3dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@ "
+                android:textColor="#50FFD700"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/tv_trade_entry"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="—"
+                android:textColor="#CCCCCC"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="P&amp;L "
+                android:textColor="#50FFD700"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/tv_trade_pnl"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="+$0.00"
+                android:textColor="@color/price_up"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
 
     </LinearLayout>
+
+    <!-- No trade / not connected -->
+    <TextView
+        android:id="@+id/tv_no_trade"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="----"
+        android:textColor="#60FFFFFF"
+        android:textSize="13sp"
+        android:visibility="visible" />
 
     <!-- Footer: timestamp + refresh -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical"
+        android:layout_marginTop="6dp">
 
         <TextView
             android:id="@+id/tv_updated"
@@ -232,12 +222,12 @@
             android:layout_weight="1"
             android:text=""
             android:textColor="#50FFFFFF"
-            android:textSize="11sp" />
+            android:textSize="12sp" />
 
         <ImageButton
             android:id="@+id/btn_refresh"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
             android:src="@drawable/ic_refresh"
             android:background="@android:color/transparent"
             android:scaleType="fitCenter"
