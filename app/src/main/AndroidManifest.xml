@@ -60,6 +60,19 @@
                 android:resource="@xml/widget_trade_info" />
         </receiver>
 
+        <!-- PnL 2×2 widget: price + trade P&L with SL/TP background color -->
+        <receiver
+            android:name=".PnlSimpleGoldWidget"
+            android:exported="true"
+            android:label="@string/pnl_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_pnl_simple_info" />
+        </receiver>
+
         <!-- Refresh widget on phone unlock -->
         <receiver
             android:name=".ScreenUnlockReceiver"

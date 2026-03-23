@@ -3,6 +3,7 @@ package com.goldwidget.pro
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
+import android.graphics.Color
 import android.view.View
 import android.widget.RemoteViews
 import androidx.work.Worker
@@ -76,6 +77,8 @@ class WidgetUpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
                     .putString("trade_side",     t.side)
                     .putFloat("trade_lots",      t.volumeLots.toFloat())
                     .putFloat("trade_entry",     t.entryPrice.toFloat())
+                    .putFloat("trade_sl",        t.stopLoss.toFloat())
+                    .putFloat("trade_tp",        t.takeProfit.toFloat())
                     .putInt("trade_count",       trades.size)
             }
             edit.apply()
@@ -93,7 +96,9 @@ class WidgetUpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
                     entryPrice = p.getFloat("trade_entry", 0f).toDouble(),
                     swap       = 0.0,
                     commission = 0.0,
-                    openTime   = 0L
+                    openTime   = 0L,
+                    stopLoss   = p.getFloat("trade_sl", 0f).toDouble(),
+                    takeProfit = p.getFloat("trade_tp", 0f).toDouble()
                 )
             )
         }
@@ -113,6 +118,9 @@ class WidgetUpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
 
             val tradeIds = mgr.getAppWidgetIds(ComponentName(ctx, TradeGoldWidget::class.java))
             for (id in tradeIds) mgr.updateAppWidget(id, buildTradeViews(ctx, data, trades))
+
+            val pnlIds = mgr.getAppWidgetIds(ComponentName(ctx, PnlSimpleGoldWidget::class.java))
+            for (id in pnlIds) mgr.updateAppWidget(id, buildPnlSimpleViews(ctx, data, trades))
         }
 
         // ── View builders ─────────────────────────────────────────────────
@@ -197,6 +205,71 @@ class WidgetUpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
                 )
             }
             return views
+        }
+
+        fun buildPnlSimpleViews(ctx: Context, data: GoldData, trades: List<TradeData>): RemoteViews {
+            val views = RemoteViews(ctx.packageName, R.layout.widget_pnl_simple)
+            views.setTextViewText(R.id.tv_price, GoldApiService.formatPrice(data.price))
+            views.setViewVisibility(
+                R.id.iv_market_closed,
+                if (data.marketClosed) View.VISIBLE else View.GONE
+            )
+            views.setTextViewText(R.id.tv_updated, GoldApiService.formatTime(data.timestamp))
+            views.setOnClickPendingIntent(R.id.btn_refresh, PnlSimpleGoldWidget.refreshPendingIntent(ctx))
+
+            if (trades.isNotEmpty()) {
+                val t = trades[0]
+                val pnl = t.unrealizedPnl(data.price)
+                val pnlSign = if (pnl >= 0) "+" else ""
+                val pnlStr  = "$pnlSign${"%.2f".format(pnl)}"
+                val pnlColor = if (pnl >= 0) ctx.getColor(R.color.price_up)
+                               else ctx.getColor(R.color.price_down)
+                val pillRes  = if (pnl >= 0) R.drawable.pill_up else R.drawable.pill_down
+
+                views.setInt(R.id.tv_change, "setBackgroundResource", pillRes)
+                views.setTextViewText(R.id.tv_change, pnlStr)
+                views.setTextColor(R.id.tv_change, pnlColor)
+                views.setInt(R.id.root_layout, "setBackgroundColor", pnlBgColor(t, data.price))
+            } else {
+                views.setInt(R.id.tv_change, "setBackgroundResource", R.drawable.pill_up)
+                views.setTextViewText(R.id.tv_change, "--")
+                views.setTextColor(R.id.tv_change, Color.argb(120, 255, 255, 255))
+                views.setInt(R.id.root_layout, "setBackgroundColor", COLOR_NEUTRAL)
+            }
+            return views
+        }
+
+        // ── PnL background color helpers ──────────────────────────────────
+
+        // Matches widget_background center color
+        private val COLOR_NEUTRAL = Color.argb(255, 20, 18, 14)
+
+        private fun pnlBgColor(trade: TradeData, price: Double): Int {
+            val sl = trade.stopLoss
+            val tp = trade.takeProfit
+            if (sl <= 0.0 || tp <= 0.0) return COLOR_NEUTRAL
+
+            val ratio = if (trade.side == "BUY") (price - sl) / (tp - sl)
+                        else                      (sl - price) / (sl - tp)
+            val t = ratio.coerceIn(0.0, 1.0).toFloat()
+
+            // 0.0 = at SL (dark red) … 0.5 = neutral … 1.0 = at TP (dark green)
+            val colorSl      = Color.argb(255,  60,  8,  8)
+            val colorNeutral = Color.argb(255,  20, 18, 14)
+            val colorTp      = Color.argb(255,   8, 55, 18)
+
+            return if (t <= 0.5f) lerpColor(colorSl, colorNeutral, t / 0.5f)
+                   else           lerpColor(colorNeutral, colorTp, (t - 0.5f) / 0.5f)
+        }
+
+        private fun lerpColor(c1: Int, c2: Int, t: Float): Int {
+            fun lerp(a: Int, b: Int) = (a + (b - a) * t).toInt().coerceIn(0, 255)
+            return Color.argb(
+                lerp(Color.alpha(c1), Color.alpha(c2)),
+                lerp(Color.red(c1),   Color.red(c2)),
+                lerp(Color.green(c1), Color.green(c2)),
+                lerp(Color.blue(c1),  Color.blue(c2))
+            )
         }
     }
 }

@@ -7,4 +7,6 @@
     <string name="simple_widget_desc">Shows current XAUUSD gold price</string>
     <string name="detailed_widget_desc">Shows gold price with day high, low, open, and previous close</string>
     <string name="trade_widget_desc">Shows gold price and your open XAUUSD trade from cTrader</string>
+    <string name="pnl_widget_name">Gold P&amp;L (cTrader)</string>
+    <string name="pnl_widget_desc">Shows gold price and trade P&amp;L — background turns red near SL, green near TP</string>
 </resources>

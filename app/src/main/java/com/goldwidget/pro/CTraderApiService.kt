@@ -133,7 +133,9 @@ object CTraderApiService {
                     entryPrice = obj.getDouble("price"),
                     swap       = obj.optDouble("swap", 0.0),
                     commission = obj.optDouble("commission", 0.0),
-                    openTime   = obj.optLong("openTimestamp", System.currentTimeMillis())
+                    openTime   = obj.optLong("openTimestamp", System.currentTimeMillis()),
+                    stopLoss   = obj.optDouble("stopLoss", 0.0),
+                    takeProfit = obj.optDouble("takeProfit", 0.0)
                 )
             }
         } catch (e: Exception) { null }

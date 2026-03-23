@@ -8,7 +8,9 @@ data class TradeData(
     val entryPrice: Double,
     val swap: Double,
     val commission: Double,
-    val openTime: Long
+    val openTime: Long,
+    val stopLoss: Double = 0.0,
+    val takeProfit: Double = 0.0
 ) {
     /**
      * Calculates unrealized gross P&L for metals:
