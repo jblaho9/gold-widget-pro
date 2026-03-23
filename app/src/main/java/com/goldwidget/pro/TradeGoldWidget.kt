@@ -13,12 +13,16 @@ class TradeGoldWidget : AppWidgetProvider() {
         val cachedGold   = WidgetUpdateWorker.loadCache(ctx)
         val cachedTrades = WidgetUpdateWorker.loadTradeCache(ctx)
         for (id in ids) {
-            if (cachedGold != null) {
-                mgr.updateAppWidget(id, WidgetUpdateWorker.buildTradeViews(ctx, cachedGold, cachedTrades))
-            } else {
-                val clickOnly = RemoteViews(ctx.packageName, R.layout.widget_trade)
-                clickOnly.setOnClickPendingIntent(R.id.btn_refresh, refreshPendingIntent(ctx))
-                mgr.partiallyUpdateAppWidget(id, clickOnly)
+            try {
+                val views = if (cachedGold != null)
+                    WidgetUpdateWorker.buildTradeViews(ctx, cachedGold, cachedTrades)
+                else
+                    buildPlaceholderViews(ctx)
+                mgr.updateAppWidget(id, views)
+            } catch (e: Exception) {
+                // If anything fails, push a minimal placeholder so the launcher
+                // clears the "Can't load widget" state on the next update cycle.
+                try { mgr.updateAppWidget(id, buildPlaceholderViews(ctx)) } catch (_: Exception) {}
             }
         }
         SimpleGoldWidget.schedulePeriodicUpdates(ctx)
@@ -73,6 +77,12 @@ class TradeGoldWidget : AppWidgetProvider() {
 
     companion object {
         const val ACTION_REFRESH = "com.goldwidget.pro.ACTION_REFRESH_TRADE"
+
+        fun buildPlaceholderViews(ctx: Context): RemoteViews {
+            val v = RemoteViews(ctx.packageName, R.layout.widget_trade)
+            v.setOnClickPendingIntent(R.id.btn_refresh, refreshPendingIntent(ctx))
+            return v
+        }
 
         fun refreshPendingIntent(ctx: Context): PendingIntent {
             val intent = Intent(ctx, TradeGoldWidget::class.java).apply {
