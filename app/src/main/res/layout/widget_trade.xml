@@ -206,32 +206,15 @@
 
         </LinearLayout>
 
-        <!-- No trade / not connected message (VISIBLE by default) -->
-        <LinearLayout
-            android:id="@+id/ll_no_trade"
-            android:layout_width="match_parent"
+        <!-- No trade / not connected (VISIBLE by default) -->
+        <TextView
+            android:id="@+id/tv_no_trade"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:visibility="visible">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="TRADE  "
-                android:textColor="#50FFD700"
-                android:textSize="8sp" />
-
-            <TextView
-                android:id="@+id/tv_no_trade"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Open app to connect cTrader"
-                android:textColor="#60FFFFFF"
-                android:textSize="11sp"
-                android:fontFamily="sans-serif-light" />
-
-        </LinearLayout>
+            android:text="----"
+            android:textColor="#60FFFFFF"
+            android:textSize="13sp"
+            android:visibility="visible" />
 
     </LinearLayout>
 

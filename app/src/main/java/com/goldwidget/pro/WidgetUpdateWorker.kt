@@ -185,7 +185,7 @@ class WidgetUpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
                 val countSuffix = if (trades.size > 1) " (+${trades.size - 1})" else ""
 
                 views.setViewVisibility(R.id.ll_trade,    View.VISIBLE)
-                views.setViewVisibility(R.id.ll_no_trade, View.GONE)
+                views.setViewVisibility(R.id.tv_no_trade, View.GONE)
 
                 views.setTextViewText(R.id.tv_trade_side,   t.side)
                 views.setTextColor(R.id.tv_trade_side, sideColor)
@@ -195,14 +195,8 @@ class WidgetUpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
                 views.setTextViewText(R.id.tv_trade_pnl,    pnlStr)
                 views.setTextColor(R.id.tv_trade_pnl, pnlColor)
             } else {
-                views.setViewVisibility(R.id.ll_trade,    View.GONE)
-                views.setViewVisibility(R.id.ll_no_trade, View.VISIBLE)
-                val connected = TokenManager.hasValidToken(ctx)
-                views.setTextViewText(
-                    R.id.tv_no_trade,
-                    if (connected) "No open XAUUSD trades"
-                    else "Open app to connect cTrader"
-                )
+                views.setViewVisibility(R.id.ll_trade,   View.GONE)
+                views.setViewVisibility(R.id.tv_no_trade, View.VISIBLE)
             }
             return views
         }
