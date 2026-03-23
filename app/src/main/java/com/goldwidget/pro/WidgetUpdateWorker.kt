@@ -176,27 +176,28 @@ class WidgetUpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
                 val t = trades[0]
                 val pnl = t.unrealizedPnl(data.price)
                 val pnlSign = if (pnl >= 0) "+" else ""
-                val pnlStr = "$pnlSign${"%.2f".format(pnl)}"
                 val pnlColor = if (pnl >= 0) ctx.getColor(R.color.price_up)
                                else ctx.getColor(R.color.price_down)
                 val sideColor = if (t.side == "BUY") ctx.getColor(R.color.price_up)
                                 else ctx.getColor(R.color.price_down)
-
                 val countSuffix = if (trades.size > 1) " (+${trades.size - 1})" else ""
-
-                views.setViewVisibility(R.id.ll_trade,    View.VISIBLE)
-                views.setViewVisibility(R.id.tv_no_trade, View.GONE)
 
                 views.setTextViewText(R.id.tv_trade_side,   t.side)
                 views.setTextColor(R.id.tv_trade_side, sideColor)
                 views.setTextViewText(R.id.tv_trade_symbol, " ${t.symbol}$countSuffix")
                 views.setTextViewText(R.id.tv_trade_lots,   "${"%.2f".format(t.volumeLots)} lots")
                 views.setTextViewText(R.id.tv_trade_entry,  GoldApiService.formatPrice(t.entryPrice))
-                views.setTextViewText(R.id.tv_trade_pnl,    pnlStr)
+                views.setTextViewText(R.id.tv_trade_pnl,    "$pnlSign${"%.2f".format(pnl)}")
                 views.setTextColor(R.id.tv_trade_pnl, pnlColor)
             } else {
-                views.setViewVisibility(R.id.ll_trade,   View.GONE)
-                views.setViewVisibility(R.id.tv_no_trade, View.VISIBLE)
+                val dim = ctx.getColor(R.color.price_up).let { 0x60FFFFFF.toInt() }
+                views.setTextViewText(R.id.tv_trade_side,   "----")
+                views.setTextColor(R.id.tv_trade_side, dim)
+                views.setTextViewText(R.id.tv_trade_symbol, "")
+                views.setTextViewText(R.id.tv_trade_lots,   "")
+                views.setTextViewText(R.id.tv_trade_entry,  "----")
+                views.setTextViewText(R.id.tv_trade_pnl,    "----")
+                views.setTextColor(R.id.tv_trade_pnl, dim)
             }
             return views
         }
