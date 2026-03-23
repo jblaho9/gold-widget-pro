@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#FF141210"
+    android:background="@drawable/widget_background"
     android:padding="14dp">
 
     <!-- Header: GOLD left, pause + pill (PnL) right -->

@@ -229,47 +229,33 @@ class WidgetUpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
                 views.setInt(R.id.tv_change, "setBackgroundResource", pillRes)
                 views.setTextViewText(R.id.tv_change, pnlStr)
                 views.setTextColor(R.id.tv_change, pnlColor)
-                views.setInt(R.id.root_layout, "setBackgroundColor", pnlBgColor(t, data.price))
+                views.setInt(R.id.root_layout, "setBackgroundResource", pnlBgDrawable(t, data.price))
             } else {
                 views.setInt(R.id.tv_change, "setBackgroundResource", R.drawable.pill_up)
                 views.setTextViewText(R.id.tv_change, "--")
                 views.setTextColor(R.id.tv_change, Color.argb(120, 255, 255, 255))
-                views.setInt(R.id.root_layout, "setBackgroundColor", COLOR_NEUTRAL)
+                views.setInt(R.id.root_layout, "setBackgroundResource", R.drawable.widget_background)
             }
             return views
         }
 
-        // ── PnL background color helpers ──────────────────────────────────
+        // ── PnL background drawable helpers ──────────────────────────────
 
-        // Matches widget_background center color
-        private val COLOR_NEUTRAL = Color.argb(255, 20, 18, 14)
-
-        private fun pnlBgColor(trade: TradeData, price: Double): Int {
+        private fun pnlBgDrawable(trade: TradeData, price: Double): Int {
             val sl = trade.stopLoss
             val tp = trade.takeProfit
-            if (sl <= 0.0 || tp <= 0.0) return COLOR_NEUTRAL
+            if (sl <= 0.0 || tp <= 0.0) return R.drawable.widget_background
 
             val ratio = if (trade.side == "BUY") (price - sl) / (tp - sl)
                         else                      (sl - price) / (sl - tp)
-            val t = ratio.coerceIn(0.0, 1.0).toFloat()
 
-            // 0.0 = at SL (dark red) … 0.5 = neutral … 1.0 = at TP (dark green)
-            val colorSl      = Color.argb(255,  60,  8,  8)
-            val colorNeutral = Color.argb(255,  20, 18, 14)
-            val colorTp      = Color.argb(255,   8, 55, 18)
-
-            return if (t <= 0.5f) lerpColor(colorSl, colorNeutral, t / 0.5f)
-                   else           lerpColor(colorNeutral, colorTp, (t - 0.5f) / 0.5f)
-        }
-
-        private fun lerpColor(c1: Int, c2: Int, t: Float): Int {
-            fun lerp(a: Int, b: Int) = (a + (b - a) * t).toInt().coerceIn(0, 255)
-            return Color.argb(
-                lerp(Color.alpha(c1), Color.alpha(c2)),
-                lerp(Color.red(c1),   Color.red(c2)),
-                lerp(Color.green(c1), Color.green(c2)),
-                lerp(Color.blue(c1),  Color.blue(c2))
-            )
+            return when {
+                ratio < 0.2  -> R.drawable.widget_bg_pnl_red_strong
+                ratio < 0.4  -> R.drawable.widget_bg_pnl_red_light
+                ratio < 0.6  -> R.drawable.widget_background
+                ratio < 0.8  -> R.drawable.widget_bg_pnl_green_light
+                else         -> R.drawable.widget_bg_pnl_green_strong
+            }
         }
     }
 }
