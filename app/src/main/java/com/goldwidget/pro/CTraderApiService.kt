@@ -2,10 +2,16 @@ package com.goldwidget.pro
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
+import org.json.JSONArray
 import org.json.JSONObject
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 /**
@@ -13,7 +19,7 @@ import java.util.concurrent.TimeUnit
  *
  * SETUP — before building:
  *  1. Go to https://connect.spotware.com and register a new app.
- *  2. Set the redirect URI to exactly: com.goldwidget.pro://oauth
+ *  2. Set the redirect URI to exactly: http://localhost/callback
  *  3. Copy your Client ID and Client Secret into the constants below.
  */
 object CTraderApiService {
@@ -103,42 +109,137 @@ object CTraderApiService {
     /** List all trading accounts for the authenticated user. */
     fun getTradingAccounts(accessToken: String): List<TradingAccount>? {
         return try {
-            val json = get("$API_BASE/tradingaccounts?token=$accessToken") ?: return null
+            Log.d("CTrader", "token prefix: ${accessToken.take(20)}")
+            val url = "$API_BASE/tradingaccounts?access_token=${Uri.encode(accessToken)}"
+            val raw = getRaw(url)
+            Log.d("CTrader", "tradingaccounts raw: $raw")
+            if (raw == null) return null
+            val json = JSONObject(raw)
             val arr = json.getJSONArray("data")
             (0 until arr.length()).map { i ->
                 val obj = arr.getJSONObject(i)
+                Log.d("CTrader", "account obj: $obj")
                 TradingAccount(
-                    accountId  = obj.getLong("accountId"),
-                    brokerName = obj.optString("brokerName", ""),
+                    accountId  = obj.optLong("accountId", obj.optLong("ctidTraderAccountId", 0)),
+                    brokerName = obj.optString("brokerName", obj.optString("broker", "")),
                     balance    = obj.optDouble("balance", 0.0),
-                    currency   = obj.optString("depositCurrency", "USD")
+                    currency   = obj.optString("depositCurrency", obj.optString("currency", "USD"))
                 )
             }
-        } catch (e: Exception) { null }
+        } catch (e: Exception) {
+            Log.e("CTrader", "getTradingAccounts failed", e)
+            null
+        }
     }
 
-    /** Get all open positions for a trading account. */
+    /**
+     * Get all open positions via the cTrader WebSocket JSON API (live.ctraderapi.com:5036).
+     * REST has no positions endpoint — positions require WebSocket + 3-step auth handshake.
+     */
     fun getPositions(accessToken: String, accountId: Long): List<TradeData>? {
-        return try {
-            val json = get("$API_BASE/tradingaccounts/$accountId/positions?token=$accessToken")
-                ?: return null
-            val arr = json.getJSONArray("position")
-            (0 until arr.length()).map { i ->
-                val obj = arr.getJSONObject(i)
-                TradeData(
-                    positionId = obj.getString("positionId"),
-                    symbol     = obj.getString("symbolName"),
-                    side       = obj.getString("tradeSide"),       // "BUY" or "SELL"
-                    volumeLots = obj.getLong("volume") / 100.0,    // API unit: 100 = 1 lot
-                    entryPrice = obj.getDouble("price"),
-                    swap       = obj.optDouble("swap", 0.0),
-                    commission = obj.optDouble("commission", 0.0),
-                    openTime   = obj.optLong("openTimestamp", System.currentTimeMillis()),
-                    stopLoss   = obj.optDouble("stopLoss", 0.0),
-                    takeProfit = obj.optDouble("takeProfit", 0.0)
-                )
+        val latch = CountDownLatch(1)
+        var result: List<TradeData>? = null
+        var spotSymbolId = 0L
+
+        val wsClient = OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .build()
+
+        val request = Request.Builder()
+            .url("wss://live.ctraderapi.com:5036")
+            .build()
+
+        wsClient.newWebSocket(request, object : WebSocketListener() {
+            override fun onOpen(ws: WebSocket, response: Response) {
+                Log.d("CTrader", "WS open — sending app auth")
+                ws.send("""{"payloadType":2100,"clientMsgId":"1","payload":{"clientId":"$CLIENT_ID","clientSecret":"$CLIENT_SECRET"}}""")
             }
-        } catch (e: Exception) { null }
+
+            override fun onMessage(ws: WebSocket, text: String) {
+                Log.d("CTrader", "WS msg: $text")
+                try {
+                    val msg = JSONObject(text)
+                    when (msg.optInt("payloadType")) {
+                        2101 -> { // ApplicationAuthRes → send account auth
+                            ws.send("""{"payloadType":2102,"clientMsgId":"2","payload":{"accessToken":"$accessToken","ctidTraderAccountId":$accountId}}""")
+                        }
+                        2103 -> { // AccountAuthRes → request positions
+                            ws.send("""{"payloadType":2124,"clientMsgId":"3","payload":{"ctidTraderAccountId":$accountId}}""")
+                        }
+                        2125 -> { // ReconcileRes → parse positions
+                            val payload = msg.optJSONObject("payload")
+                            val arr = payload?.optJSONArray("position") ?: JSONArray()
+                            result = (0 until arr.length()).mapNotNull { i ->
+                                try {
+                                    val pos = arr.getJSONObject(i)
+                                    val td  = pos.getJSONObject("tradeData")
+                                    val sideRaw = td.optString("tradeSide", "BUY")
+                                    val side = if (sideRaw == "2" || sideRaw.equals("SELL", ignoreCase = true)) "SELL" else "BUY"
+                                    if (spotSymbolId == 0L) spotSymbolId = td.optLong("symbolId", 0L)
+                                    TradeData(
+                                        positionId = pos.optLong("positionId", 0).toString(),
+                                        symbol     = "XAUUSD",
+                                        side       = side,
+                                        volumeLots = td.optLong("volume", 0L) / 100.0,
+                                        entryPrice = pos.optDouble("price", 0.0),
+                                        swap       = pos.optDouble("swap", 0.0) / 100.0,
+                                        commission = pos.optDouble("commission", 0.0) / 100.0,
+                                        openTime   = td.optLong("openTimestamp", System.currentTimeMillis()),
+                                        stopLoss   = pos.optDouble("stopLoss", 0.0),
+                                        takeProfit = pos.optDouble("takeProfit", 0.0)
+                                    )
+                                } catch (e: Exception) {
+                                    Log.e("CTrader", "position parse error", e); null
+                                }
+                            }
+                            if (spotSymbolId > 0L) {
+                                // Subscribe to spot to get cTrader's live bid price
+                                ws.send("""{"payloadType":2126,"clientMsgId":"4","payload":{"ctidTraderAccountId":$accountId,"symbolId":[$spotSymbolId]}}""")
+                            } else {
+                                ws.close(1000, "done")
+                                latch.countDown()
+                            }
+                        }
+                        2131 -> { // ProtoOASpotEvent → capture bid, then unsubscribe
+                            val payload = msg.optJSONObject("payload")
+                            val rawBid = payload?.optDouble("bid", 0.0) ?: 0.0
+                            // cTrader may return bid as integer (e.g. 320345 = $3203.45) or as double
+                            lastLiveBid = if (rawBid > 10000) rawBid / 100.0 else rawBid
+                            Log.d("CTrader", "spot bid raw=$rawBid lastLiveBid=$lastLiveBid")
+                            ws.send("""{"payloadType":2128,"clientMsgId":"5","payload":{"ctidTraderAccountId":$accountId,"symbolId":[$spotSymbolId]}}""")
+                            ws.close(1000, "done")
+                            latch.countDown()
+                        }
+                        50 -> { // ProtoOAError
+                            val err = msg.optJSONObject("payload")?.optString("description", "unknown") ?: "unknown"
+                            lastError = "WS err: $err"
+                            Log.e("CTrader", "WS API error: $text")
+                            ws.close(1000, "error")
+                            latch.countDown()
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("CTrader", "WS parse error", e)
+                }
+            }
+
+            override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
+                lastError = "WS fail: ${t.message}"
+                Log.e("CTrader", "WS failure", t)
+                latch.countDown()
+            }
+
+            override fun onClosed(ws: WebSocket, code: Int, reason: String) {
+                latch.countDown()
+            }
+        })
+
+        if (!latch.await(30, TimeUnit.SECONDS)) {
+            lastError = "WS timeout"
+            Log.e("CTrader", "WS timed out")
+            return null
+        }
+        return result
     }
 
     /**
@@ -158,12 +259,29 @@ object CTraderApiService {
 
     // ── Internal helpers ──────────────────────────────────────────────────
 
-    private fun get(url: String): JSONObject? {
+    var lastError: String = ""
+    var lastLiveBid: Double = 0.0
+
+    private fun getRaw(url: String, token: String? = null): String? {
         return try {
-            val response = client.newCall(Request.Builder().url(url).build()).execute()
-            if (!response.isSuccessful) return null
-            val body = response.body?.string() ?: return null
-            JSONObject(body)
-        } catch (e: Exception) { null }
+            val req = Request.Builder().url(url)
+            if (token != null) req.header("Authorization", "Bearer $token")
+            val response = client.newCall(req.build()).execute()
+            val body = response.body?.string() ?: ""
+            Log.d("CTrader", "GET $url → HTTP ${response.code} body=$body")
+            if (!response.isSuccessful) {
+                lastError = "HTTP ${response.code}: ${body.take(300)}"
+                null
+            } else body
+        } catch (e: Exception) {
+            lastError = "Network error: ${e.message}"
+            Log.e("CTrader", "getRaw failed for $url", e)
+            null
+        }
+    }
+
+    private fun get(url: String, token: String? = null): JSONObject? {
+        val raw = getRaw(url, token) ?: return null
+        return try { JSONObject(raw) } catch (e: Exception) { null }
     }
 }

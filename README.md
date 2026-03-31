@@ -13,6 +13,10 @@ Android home screen widgets showing live XAUUSD (gold) price and your open cTrad
 
 All widgets refresh every 15 minutes via WorkManager and also on phone unlock. Tap the refresh button for an immediate update.
 
+## P&L accuracy
+
+Trade P&L is calculated using the live bid price fetched directly from cTrader's own WebSocket feed (same session used to retrieve positions), so the value matches what cTrader shows. If no open position is found, the widget falls back to the Swissquote mid price.
+
 ## Setup
 
 ### 1. Register a cTrader app

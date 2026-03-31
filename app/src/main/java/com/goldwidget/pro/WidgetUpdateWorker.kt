@@ -29,7 +29,6 @@ class WidgetUpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
     companion object {
 
         private const val CACHE_PREFS = "gold_widget_cache"
-
         // ── Gold data cache ───────────────────────────────────────────────
 
         fun saveCache(ctx: Context, data: GoldData) {
@@ -174,7 +173,8 @@ class WidgetUpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
 
             if (trades.isNotEmpty()) {
                 val t = trades[0]
-                val pnl = t.unrealizedPnl(data.price)
+                val livePrice = if (CTraderApiService.lastLiveBid > 0) CTraderApiService.lastLiveBid else data.price
+                val pnl = t.unrealizedPnl(livePrice)
                 val pnlSign = if (pnl >= 0) "+" else ""
                 val pnlColor = if (pnl >= 0) ctx.getColor(R.color.price_up)
                                else ctx.getColor(R.color.price_down)
@@ -214,7 +214,8 @@ class WidgetUpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
 
             if (trades.isNotEmpty()) {
                 val t = trades[0]
-                val pnl = t.unrealizedPnl(data.price)
+                val livePrice = if (CTraderApiService.lastLiveBid > 0) CTraderApiService.lastLiveBid else data.price
+                val pnl = t.unrealizedPnl(livePrice) + t.swap + t.commission
                 val pnlSign = if (pnl >= 0) "+" else ""
                 val pnlStr  = "$pnlSign${"%.2f".format(pnl)}"
                 val pnlColor = if (pnl >= 0) ctx.getColor(R.color.price_up)
@@ -224,7 +225,7 @@ class WidgetUpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
                 views.setInt(R.id.tv_change, "setBackgroundResource", pillRes)
                 views.setTextViewText(R.id.tv_change, pnlStr)
                 views.setTextColor(R.id.tv_change, pnlColor)
-                views.setInt(R.id.root_layout, "setBackgroundResource", pnlBgDrawable(t, data.price))
+                views.setInt(R.id.root_layout, "setBackgroundResource", pnlBgDrawable(t, livePrice))
             } else {
                 views.setInt(R.id.tv_change, "setBackgroundResource", R.drawable.pill_up)
                 views.setTextViewText(R.id.tv_change, "--")
