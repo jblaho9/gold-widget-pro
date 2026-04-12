@@ -10,30 +10,27 @@ import android.widget.RemoteViews
 class DetailedGoldWidget : AppWidgetProvider() {
 
     override fun onUpdate(ctx: Context, mgr: AppWidgetManager, ids: IntArray) {
+        SimpleGoldWidget.scheduleAlarm(ctx)
         val cached = WidgetUpdateWorker.loadCache(ctx)
-        for (id in ids) {
-            if (cached != null) {
-                mgr.updateAppWidget(id, WidgetUpdateWorker.buildDetailedViews(ctx, cached))
-            } else {
-                val clickOnly = RemoteViews(ctx.packageName, R.layout.widget_detailed)
-                clickOnly.setOnClickPendingIntent(R.id.btn_refresh, refreshPendingIntent(ctx))
-                mgr.partiallyUpdateAppWidget(id, clickOnly)
-            }
+        if (cached == null) {
+            val placeholder = RemoteViews(ctx.packageName, R.layout.widget_detailed)
+            placeholder.setOnClickPendingIntent(R.id.btn_refresh, refreshPendingIntent(ctx))
+            for (id in ids) mgr.updateAppWidget(id, placeholder)
+            val result = goAsync()
+            Thread {
+                try {
+                    WidgetUpdateWorker.fetchAndUpdateAll(ctx)
+                } finally {
+                    result.finish()
+                }
+            }.start()
+            return
         }
-        SimpleGoldWidget.schedulePeriodicUpdates(ctx)
-        val pending = goAsync()
-        Thread {
-            try {
-                val data = GoldApiService.fetchGoldData(ctx)
-                if (data != null) WidgetUpdateWorker.updateAllWidgets(ctx, data)
-            } finally {
-                pending.finish()
-            }
-        }.start()
+        for (id in ids) mgr.updateAppWidget(id, WidgetUpdateWorker.buildDetailedViews(ctx, cached))
     }
 
     override fun onEnabled(ctx: Context) {
-        SimpleGoldWidget.schedulePeriodicUpdates(ctx)
+        SimpleGoldWidget.scheduleAlarm(ctx)
         SimpleGoldWidget.triggerRefresh(ctx)
     }
 
@@ -43,8 +40,7 @@ class DetailedGoldWidget : AppWidgetProvider() {
             val result = goAsync()
             Thread {
                 try {
-                    val data = GoldApiService.fetchGoldData(ctx)
-                    if (data != null) WidgetUpdateWorker.updateAllWidgets(ctx, data)
+                    WidgetUpdateWorker.fetchAndUpdateAll(ctx)
                 } finally {
                     result.finish()
                 }

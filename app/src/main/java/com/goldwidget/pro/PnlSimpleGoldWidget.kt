@@ -10,40 +10,28 @@ import android.widget.RemoteViews
 class PnlSimpleGoldWidget : AppWidgetProvider() {
 
     override fun onUpdate(ctx: Context, mgr: AppWidgetManager, ids: IntArray) {
-        val cachedGold   = WidgetUpdateWorker.loadCache(ctx)
-        val cachedTrades = WidgetUpdateWorker.loadTradeCache(ctx)
-        for (id in ids) {
-            if (cachedGold != null) {
-                mgr.updateAppWidget(id, WidgetUpdateWorker.buildPnlSimpleViews(ctx, cachedGold, cachedTrades))
-            } else {
-                val clickOnly = RemoteViews(ctx.packageName, R.layout.widget_pnl_simple)
-                clickOnly.setOnClickPendingIntent(R.id.btn_refresh, refreshPendingIntent(ctx))
-                mgr.partiallyUpdateAppWidget(id, clickOnly)
-            }
-        }
-        SimpleGoldWidget.schedulePeriodicUpdates(ctx)
-        val pending = goAsync()
-        Thread {
-            try {
-                val data = GoldApiService.fetchGoldData(ctx)
-                if (data != null) {
-                    val token     = CTraderApiService.getValidToken(ctx)
-                    val accountId = TokenManager.getAccountId(ctx)
-                    val trades = if (token != null && accountId != null)
-                        CTraderApiService.getPositions(token, accountId)
-                            ?.filter { it.symbol.contains("XAU", ignoreCase = true) }
-                            ?: emptyList()
-                    else emptyList()
-                    WidgetUpdateWorker.updateAllWidgets(ctx, data, trades)
+        SimpleGoldWidget.scheduleAlarm(ctx)
+        val cached = WidgetUpdateWorker.loadCache(ctx)
+        if (cached == null) {
+            val placeholder = RemoteViews(ctx.packageName, R.layout.widget_pnl_simple)
+            placeholder.setOnClickPendingIntent(R.id.btn_refresh, refreshPendingIntent(ctx))
+            for (id in ids) mgr.updateAppWidget(id, placeholder)
+            val result = goAsync()
+            Thread {
+                try {
+                    WidgetUpdateWorker.fetchAndUpdateAll(ctx)
+                } finally {
+                    result.finish()
                 }
-            } finally {
-                pending.finish()
-            }
-        }.start()
+            }.start()
+            return
+        }
+        val trades = WidgetUpdateWorker.loadTradeCache(ctx)
+        for (id in ids) mgr.updateAppWidget(id, WidgetUpdateWorker.buildPnlSimpleViews(ctx, cached, trades))
     }
 
     override fun onEnabled(ctx: Context) {
-        SimpleGoldWidget.schedulePeriodicUpdates(ctx)
+        SimpleGoldWidget.scheduleAlarm(ctx)
         SimpleGoldWidget.triggerRefresh(ctx)
     }
 
@@ -53,17 +41,7 @@ class PnlSimpleGoldWidget : AppWidgetProvider() {
             val result = goAsync()
             Thread {
                 try {
-                    val data = GoldApiService.fetchGoldData(ctx)
-                    if (data != null) {
-                        val token     = CTraderApiService.getValidToken(ctx)
-                        val accountId = TokenManager.getAccountId(ctx)
-                        val trades = if (token != null && accountId != null)
-                            CTraderApiService.getPositions(token, accountId)
-                                ?.filter { it.symbol.contains("XAU", ignoreCase = true) }
-                                ?: emptyList()
-                        else emptyList()
-                        WidgetUpdateWorker.updateAllWidgets(ctx, data, trades)
-                    }
+                    WidgetUpdateWorker.fetchAndUpdateAll(ctx)
                 } finally {
                     result.finish()
                 }

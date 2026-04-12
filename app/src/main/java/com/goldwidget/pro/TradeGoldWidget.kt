@@ -10,44 +10,35 @@ import android.widget.RemoteViews
 class TradeGoldWidget : AppWidgetProvider() {
 
     override fun onUpdate(ctx: Context, mgr: AppWidgetManager, ids: IntArray) {
-        val cachedGold   = WidgetUpdateWorker.loadCache(ctx)
-        val cachedTrades = WidgetUpdateWorker.loadTradeCache(ctx)
-        for (id in ids) {
-            try {
-                val views = if (cachedGold != null)
-                    WidgetUpdateWorker.buildTradeViews(ctx, cachedGold, cachedTrades)
-                else
-                    buildPlaceholderViews(ctx)
-                mgr.updateAppWidget(id, views)
-            } catch (e: Exception) {
-                // If anything fails, push a minimal placeholder so the launcher
-                // clears the "Can't load widget" state on the next update cycle.
-                try { mgr.updateAppWidget(id, buildPlaceholderViews(ctx)) } catch (_: Exception) {}
-            }
+        SimpleGoldWidget.scheduleAlarm(ctx)
+        val cached = WidgetUpdateWorker.loadCache(ctx)
+        if (cached == null) {
+            for (id in ids) mgr.updateAppWidget(id, buildPlaceholderViews(ctx))
+            val result = goAsync()
+            Thread {
+                try {
+                    WidgetUpdateWorker.fetchAndUpdateAll(ctx)
+                } finally {
+                    result.finish()
+                }
+            }.start()
+            return
         }
-        SimpleGoldWidget.schedulePeriodicUpdates(ctx)
-        val pending = goAsync()
+        val trades = WidgetUpdateWorker.loadTradeCache(ctx)
+        for (id in ids) mgr.updateAppWidget(id, WidgetUpdateWorker.buildTradeViews(ctx, cached, trades))
+        // Fetch fresh data in background so new/closed trades are picked up promptly
+        val result = goAsync()
         Thread {
             try {
-                val data = GoldApiService.fetchGoldData(ctx)
-                if (data != null) {
-                    val token     = CTraderApiService.getValidToken(ctx)
-                    val accountId = TokenManager.getAccountId(ctx)
-                    val trades = if (token != null && accountId != null)
-                        CTraderApiService.getPositions(token, accountId)
-                            ?.filter { it.symbol.contains("XAU", ignoreCase = true) }
-                            ?: emptyList()
-                    else emptyList()
-                    WidgetUpdateWorker.updateAllWidgets(ctx, data, trades)
-                }
+                WidgetUpdateWorker.fetchAndUpdateAll(ctx)
             } finally {
-                pending.finish()
+                result.finish()
             }
         }.start()
     }
 
     override fun onEnabled(ctx: Context) {
-        SimpleGoldWidget.schedulePeriodicUpdates(ctx)
+        SimpleGoldWidget.scheduleAlarm(ctx)
         SimpleGoldWidget.triggerRefresh(ctx)
     }
 
@@ -57,17 +48,7 @@ class TradeGoldWidget : AppWidgetProvider() {
             val result = goAsync()
             Thread {
                 try {
-                    val data = GoldApiService.fetchGoldData(ctx)
-                    if (data != null) {
-                        val token     = CTraderApiService.getValidToken(ctx)
-                        val accountId = TokenManager.getAccountId(ctx)
-                        val trades = if (token != null && accountId != null)
-                            CTraderApiService.getPositions(token, accountId)
-                                ?.filter { it.symbol.contains("XAU", ignoreCase = true) }
-                                ?: emptyList()
-                        else emptyList()
-                        WidgetUpdateWorker.updateAllWidgets(ctx, data, trades)
-                    }
+                    WidgetUpdateWorker.fetchAndUpdateAll(ctx)
                 } finally {
                     result.finish()
                 }

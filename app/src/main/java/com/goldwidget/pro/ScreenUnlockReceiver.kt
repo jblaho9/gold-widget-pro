@@ -13,17 +13,7 @@ class ScreenUnlockReceiver : BroadcastReceiver() {
                 val result = goAsync()
                 Thread {
                     try {
-                        val data = GoldApiService.fetchGoldData(ctx)
-                        if (data != null) {
-                            val token     = CTraderApiService.getValidToken(ctx)
-                            val accountId = TokenManager.getAccountId(ctx)
-                            val trades = if (token != null && accountId != null)
-                                CTraderApiService.getPositions(token, accountId)
-                                    ?.filter { it.symbol.contains("XAU", ignoreCase = true) }
-                                    ?: emptyList()
-                            else emptyList()
-                            WidgetUpdateWorker.updateAllWidgets(ctx, data, trades)
-                        }
+                        WidgetUpdateWorker.fetchAndUpdateAll(ctx)
                     } finally {
                         result.finish()
                     }

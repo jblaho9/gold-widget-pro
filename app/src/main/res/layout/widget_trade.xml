@@ -82,13 +82,13 @@
         </LinearLayout>
 
         <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="OPEN" android:textColor="#60FFD700" android:textSize="8sp" />
-            <TextView android:id="@+id/tv_open" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textColor="#CCCCCC" android:textSize="12sp" android:textStyle="bold" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="%" android:textColor="#60FFD700" android:textSize="8sp" />
+            <TextView android:id="@+id/tv_sl" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textColor="#CCCCCC" android:textSize="12sp" android:textStyle="bold" />
         </LinearLayout>
 
         <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="PREV" android:textColor="#60FFD700" android:textSize="8sp" />
-            <TextView android:id="@+id/tv_prev_close" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textColor="#CCCCCC" android:textSize="12sp" android:textStyle="bold" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="SL" android:textColor="#60FFD700" android:textSize="8sp" />
+            <TextView android:id="@+id/tv_tp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textColor="#CCCCCC" android:textSize="12sp" android:textStyle="bold" />
         </LinearLayout>
 
     </LinearLayout>
@@ -180,7 +180,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="P&amp;L "
+                android:text="TP "
                 android:textColor="#50FFD700"
                 android:textSize="13sp" />
 

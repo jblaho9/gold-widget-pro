@@ -6,13 +6,9 @@ import android.util.Log
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.Response
-import okhttp3.WebSocket
-import okhttp3.WebSocketListener
-import org.json.JSONArray
 import org.json.JSONObject
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import javax.net.ssl.SSLSocketFactory
 
 /**
  * Handles cTrader Open API v1 (REST + OAuth2).
@@ -34,8 +30,8 @@ object CTraderApiService {
     private const val API_BASE  = "https://api.spotware.com/connect"
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
+        .connectTimeout(6, TimeUnit.SECONDS)
+        .readTimeout(6, TimeUnit.SECONDS)
         .build()
 
     // ── Data classes ──────────────────────────────────────────────────────
@@ -133,113 +129,81 @@ object CTraderApiService {
     }
 
     /**
-     * Get all open positions via the cTrader WebSocket JSON API (live.ctraderapi.com:5036).
-     * REST has no positions endpoint — positions require WebSocket + 3-step auth handshake.
+     * Get all open positions via the cTrader Open API JSON protocol over raw SSL TCP
+     * (live.ctraderapi.com:5036). Each message is a JSON object; the server responds
+     * to each send with one JSON object (no length prefix, no WebSocket framing).
      */
     fun getPositions(accessToken: String, accountId: Long): List<TradeData>? {
-        val latch = CountDownLatch(1)
-        var result: List<TradeData>? = null
-        var spotSymbolId = 0L
+        return try {
+            val factory = SSLSocketFactory.getDefault() as SSLSocketFactory
+            val socket  = factory.createSocket("live.ctraderapi.com", 5036)
+            socket.soTimeout = 7000
+            val out = socket.getOutputStream()
+            val inp = socket.getInputStream()
 
-        val wsClient = OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .build()
-
-        val request = Request.Builder()
-            .url("wss://live.ctraderapi.com:5036")
-            .build()
-
-        wsClient.newWebSocket(request, object : WebSocketListener() {
-            override fun onOpen(ws: WebSocket, response: Response) {
-                Log.d("CTrader", "WS open — sending app auth")
-                ws.send("""{"payloadType":2100,"clientMsgId":"1","payload":{"clientId":"$CLIENT_ID","clientSecret":"$CLIENT_SECRET"}}""")
+            // App auth → expect 2101
+            tcpSendJson(out, """{"payloadType":2100,"payload":{"clientId":"$CLIENT_ID","clientSecret":"$CLIENT_SECRET"},"clientMsgId":"1"}""")
+            val r1 = tcpRecvJson(inp)
+            val pt1 = r1?.optInt("payloadType") ?: 0
+            Log.d("CTrader", "AppAuth resp payloadType=$pt1")
+            if (pt1 != 2101) {
+                lastError = "AppAuth fail pt=$pt1: ${r1?.optJSONObject("payload")?.optString("description") ?: "no response"}"
+                socket.close(); return null
             }
 
-            override fun onMessage(ws: WebSocket, text: String) {
-                Log.d("CTrader", "WS msg: $text")
-                try {
-                    val msg = JSONObject(text)
-                    when (msg.optInt("payloadType")) {
-                        2101 -> { // ApplicationAuthRes → send account auth
-                            ws.send("""{"payloadType":2102,"clientMsgId":"2","payload":{"accessToken":"$accessToken","ctidTraderAccountId":$accountId}}""")
-                        }
-                        2103 -> { // AccountAuthRes → request positions
-                            ws.send("""{"payloadType":2124,"clientMsgId":"3","payload":{"ctidTraderAccountId":$accountId}}""")
-                        }
-                        2125 -> { // ReconcileRes → parse positions
-                            val payload = msg.optJSONObject("payload")
-                            val arr = payload?.optJSONArray("position") ?: JSONArray()
-                            result = (0 until arr.length()).mapNotNull { i ->
-                                try {
-                                    val pos = arr.getJSONObject(i)
-                                    val td  = pos.getJSONObject("tradeData")
-                                    val sideRaw = td.optString("tradeSide", "BUY")
-                                    val side = if (sideRaw == "2" || sideRaw.equals("SELL", ignoreCase = true)) "SELL" else "BUY"
-                                    if (spotSymbolId == 0L) spotSymbolId = td.optLong("symbolId", 0L)
-                                    TradeData(
-                                        positionId = pos.optLong("positionId", 0).toString(),
-                                        symbol     = "XAUUSD",
-                                        side       = side,
-                                        volumeLots = td.optLong("volume", 0L) / 100.0,
-                                        entryPrice = pos.optDouble("price", 0.0),
-                                        swap       = pos.optDouble("swap", 0.0) / 100.0,
-                                        commission = pos.optDouble("commission", 0.0) / 100.0,
-                                        openTime   = td.optLong("openTimestamp", System.currentTimeMillis()),
-                                        stopLoss   = pos.optDouble("stopLoss", 0.0),
-                                        takeProfit = pos.optDouble("takeProfit", 0.0)
-                                    )
-                                } catch (e: Exception) {
-                                    Log.e("CTrader", "position parse error", e); null
-                                }
-                            }
-                            if (spotSymbolId > 0L) {
-                                // Subscribe to spot to get cTrader's live bid price
-                                ws.send("""{"payloadType":2126,"clientMsgId":"4","payload":{"ctidTraderAccountId":$accountId,"symbolId":[$spotSymbolId]}}""")
-                            } else {
-                                ws.close(1000, "done")
-                                latch.countDown()
-                            }
-                        }
-                        2131 -> { // ProtoOASpotEvent → capture bid, then unsubscribe
-                            val payload = msg.optJSONObject("payload")
-                            val rawBid = payload?.optDouble("bid", 0.0) ?: 0.0
-                            // cTrader may return bid as integer (e.g. 320345 = $3203.45) or as double
-                            lastLiveBid = if (rawBid > 10000) rawBid / 100.0 else rawBid
-                            Log.d("CTrader", "spot bid raw=$rawBid lastLiveBid=$lastLiveBid")
-                            ws.send("""{"payloadType":2128,"clientMsgId":"5","payload":{"ctidTraderAccountId":$accountId,"symbolId":[$spotSymbolId]}}""")
-                            ws.close(1000, "done")
-                            latch.countDown()
-                        }
-                        50 -> { // ProtoOAError
-                            val err = msg.optJSONObject("payload")?.optString("description", "unknown") ?: "unknown"
-                            lastError = "WS err: $err"
-                            Log.e("CTrader", "WS API error: $text")
-                            ws.close(1000, "error")
-                            latch.countDown()
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e("CTrader", "WS parse error", e)
-                }
+            // Account auth → expect 2103
+            tcpSendJson(out, """{"payloadType":2102,"payload":{"ctidTraderAccountId":$accountId,"accessToken":"$accessToken"},"clientMsgId":"2"}""")
+            val r2 = tcpRecvJson(inp)
+            val pt2 = r2?.optInt("payloadType") ?: 0
+            Log.d("CTrader", "AccountAuth resp payloadType=$pt2")
+            if (pt2 != 2103) {
+                lastError = "AccountAuth fail pt=$pt2: ${r2?.optJSONObject("payload")?.optString("description") ?: "no response"}"
+                socket.close(); return null
             }
 
-            override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
-                lastError = "WS fail: ${t.message}"
-                Log.e("CTrader", "WS failure", t)
-                latch.countDown()
+            // Reconcile → expect 2125
+            tcpSendJson(out, """{"payloadType":2124,"payload":{"ctidTraderAccountId":$accountId},"clientMsgId":"3"}""")
+            val r3 = tcpRecvJson(inp)
+            val pt3 = r3?.optInt("payloadType") ?: 0
+            Log.d("CTrader", "Reconcile resp payloadType=$pt3")
+            if (pt3 != 2125) {
+                lastError = "Reconcile fail pt=$pt3: ${r3?.optJSONObject("payload")?.optString("description") ?: "no response"}"
+                socket.close(); return null
             }
 
-            override fun onClosed(ws: WebSocket, code: Int, reason: String) {
-                latch.countDown()
-            }
-        })
-
-        if (!latch.await(30, TimeUnit.SECONDS)) {
-            lastError = "WS timeout"
-            Log.e("CTrader", "WS timed out")
-            return null
+            val positions = parseJsonPositions(r3!!.optJSONObject("payload"))
+            Log.d("CTrader", "Reconcile: ${positions.size} positions")
+            socket.close()
+            positions
+        } catch (e: Exception) {
+            lastError = "TCP error: ${e.message}"
+            Log.e("CTrader", "getPositions TCP failed", e)
+            null
         }
-        return result
+    }
+
+    private fun parseJsonPositions(payload: JSONObject?): List<TradeData> {
+        if (payload == null) return emptyList()
+        val arr = payload.optJSONArray("position") ?: return emptyList()
+        return (0 until arr.length()).mapNotNull { i ->
+            try {
+                val pos = arr.getJSONObject(i)
+                val td  = pos.optJSONObject("tradeData") ?: return@mapNotNull null
+                val sideRaw = td.optString("tradeSide", "BUY")
+                TradeData(
+                    positionId = pos.optString("positionId", ""),
+                    symbol     = "XAUUSD",
+                    side       = if (sideRaw.contains("SELL", ignoreCase = true)) "SELL" else "BUY",
+                    volumeLots = td.optLong("volume", 0) / 10000.0,
+                    entryPrice = pos.optDouble("price", 0.0),
+                    swap       = pos.optDouble("swap", 0.0) / 100.0,
+                    commission = pos.optDouble("commission", 0.0) / 100.0,
+                    openTime   = td.optLong("openTimestamp", System.currentTimeMillis()),
+                    stopLoss   = pos.optDouble("stopLoss", 0.0),
+                    takeProfit = pos.optDouble("takeProfit", 0.0)
+                )
+            } catch (e: Exception) { null }
+        }
     }
 
     /**
@@ -261,6 +225,79 @@ object CTraderApiService {
 
     var lastError: String = ""
     var lastLiveBid: Double = 0.0
+
+    /** Public helper for diagnostics — returns (httpCode, body) or null on network error. */
+    fun getRawPublic(url: String): Pair<Int, String>? {
+        return try {
+            val response = client.newCall(Request.Builder().url(url).build()).execute()
+            val body = response.body?.string() ?: ""
+            Pair(response.code, body)
+        } catch (e: Exception) { null }
+    }
+
+    /** Diagnostic: send JSON app auth and show full server response. */
+    fun diagWebSocket(): String {
+        val sb = StringBuilder()
+        return try {
+            val factory = SSLSocketFactory.getDefault() as SSLSocketFactory
+            sb.appendLine("connecting raw SSL TCP…")
+            val socket = factory.createSocket("live.ctraderapi.com", 5036)
+            socket.soTimeout = 8000
+            sb.appendLine("connected")
+            val out = socket.getOutputStream()
+            val inp = socket.getInputStream()
+
+            val msg = """{"payloadType":2100,"payload":{"clientId":"$CLIENT_ID","clientSecret":"$CLIENT_SECRET"},"clientMsgId":"1"}"""
+            sb.appendLine("sending JSON (${msg.length} chars)")
+            tcpSendJson(out, msg)
+            sb.appendLine("sent — waiting…")
+
+            val resp = tcpRecvJson(inp)
+            sb.appendLine("payloadType=${resp?.optInt("payloadType") ?: "null"}")
+            sb.appendLine(resp?.toString(2) ?: "(no response)")
+            socket.close()
+            sb.toString()
+        } catch (e: Exception) {
+            sb.appendLine("error: ${e.javaClass.simpleName}: ${e.message}")
+            sb.toString()
+        }
+    }
+
+    // ── JSON over raw SSL TCP helpers ────────────────────────────────────
+
+    private fun tcpSendJson(out: java.io.OutputStream, json: String) {
+        out.write((json + "\n").toByteArray(Charsets.UTF_8))
+        out.flush()
+    }
+
+    /**
+     * Read one complete JSON object from the stream by counting braces.
+     * Handles the server not using any length prefix or newline terminator.
+     */
+    private fun tcpRecvJson(inp: java.io.InputStream): JSONObject? {
+        val sb  = StringBuilder()
+        val buf = ByteArray(4096)
+        var depth = 0; var inStr = false; var esc = false; var started = false
+        try {
+            outer@ while (true) {
+                val n = inp.read(buf)
+                if (n <= 0) break
+                for (i in 0 until n) {
+                    val c = buf[i].toInt().toChar()
+                    sb.append(c)
+                    if (esc)         { esc = false; continue }
+                    if (c == '\\' && inStr) { esc = true;  continue }
+                    if (c == '"')    { inStr = !inStr; continue }
+                    if (!inStr) {
+                        if (c == '{') { depth++; started = true }
+                        else if (c == '}') { depth--; if (started && depth == 0) break@outer }
+                    }
+                }
+            }
+        } catch (_: java.net.SocketTimeoutException) { /* return whatever we have */ }
+        if (sb.isEmpty()) return null
+        return try { JSONObject(sb.toString()) } catch (e: Exception) { null }
+    }
 
     private fun getRaw(url: String, token: String? = null): String? {
         return try {

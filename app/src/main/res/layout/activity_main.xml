@@ -102,7 +102,29 @@
                 android:textColor="#F07070"
                 android:textSize="15sp"
                 android:backgroundTint="#1C0808"
-                android:layout_marginBottom="24dp"
+                android:layout_marginBottom="12dp"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/btn_test_trades"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="Test Trade Fetch"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
+                android:backgroundTint="#1A2A1A"
+                android:layout_marginBottom="8dp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tv_trade_debug"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textColor="#80FFFFFF"
+                android:textSize="12sp"
+                android:fontFamily="monospace"
+                android:layout_marginBottom="16dp"
                 android:visibility="gone" />
 
             <View

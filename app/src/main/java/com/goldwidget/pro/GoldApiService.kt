@@ -14,8 +14,8 @@ import java.util.concurrent.TimeUnit
 object GoldApiService {
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(8, TimeUnit.SECONDS)
-        .readTimeout(8, TimeUnit.SECONDS)
+        .connectTimeout(5, TimeUnit.SECONDS)
+        .readTimeout(5, TimeUnit.SECONDS)
         .build()
 
     // Swissquote public spot feed — same source as cTrader liquidity providers
@@ -52,7 +52,8 @@ object GoldApiService {
                     }
                 }
             }
-            if (bid == 0.0) return null
+            if (bid == 0.0) { noQuotes = true; return null }
+            noQuotes = false
 
             val price = (bid + ask) / 2.0
 
@@ -104,17 +105,55 @@ object GoldApiService {
     fun formatTime(ts: Long): String =
         SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(ts))
 
-    // XAU/USD trades Sun 5 PM ET → Fri 5 PM ET
+    // Set to true when the API responds successfully but returns no bid (market closed/holiday)
+    var noQuotes = false
+        private set
+
+    // XAU/USD trades Sun 5 PM ET → Fri 5 PM ET, with a daily 1-hour break 5–6 PM ET
+    // Also closed on Good Friday, Christmas Day, and New Year's Day
     fun isMarketClosed(): Boolean {
+        if (noQuotes) return true
         val cal = Calendar.getInstance(TimeZone.getTimeZone("America/New_York"))
         val dow = cal.get(Calendar.DAY_OF_WEEK)
         val minutesInDay = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
-        val close = 17 * 60 // 5:00 PM
+        val close = 17 * 60
+        val reopen = 18 * 60
+        val dailyBreak = minutesInDay in close until reopen
+        if (isHoliday(cal)) return true
         return when (dow) {
             Calendar.SATURDAY -> true
             Calendar.SUNDAY   -> minutesInDay < close
             Calendar.FRIDAY   -> minutesInDay >= close
-            else              -> false
+            else              -> dailyBreak
+        }
+    }
+
+    private fun isHoliday(cal: Calendar): Boolean {
+        val year  = cal.get(Calendar.YEAR)
+        val month = cal.get(Calendar.MONTH)
+        val day   = cal.get(Calendar.DAY_OF_MONTH)
+        if (month == Calendar.JANUARY  && day == 1)  return true // New Year's Day
+        if (month == Calendar.DECEMBER && day == 25) return true // Christmas
+        val gf = goodFriday(year)
+        return month == gf.get(Calendar.MONTH) && day == gf.get(Calendar.DAY_OF_MONTH)
+    }
+
+    // Anonymous Gregorian algorithm → Easter Sunday, then subtract 2 days
+    private fun goodFriday(year: Int): Calendar {
+        val a = year % 19
+        val b = year / 100; val c = year % 100
+        val d = b / 4;      val e = b % 4
+        val f = (b + 8) / 25
+        val g = (b - f + 1) / 3
+        val h = (19 * a + b - d - g + 15) % 30
+        val i = c / 4;      val k = c % 4
+        val l = (32 + 2 * e + 2 * i - h - k) % 7
+        val m = (a + 11 * h + 22 * l) / 451
+        val easterMonth = (h + l - 7 * m + 114) / 31      // 3=Mar, 4=Apr
+        val easterDay   = (h + l - 7 * m + 114) % 31 + 1
+        return Calendar.getInstance(TimeZone.getTimeZone("America/New_York")).apply {
+            set(year, easterMonth - 1, easterDay)
+            add(Calendar.DAY_OF_YEAR, -2)
         }
     }
 }

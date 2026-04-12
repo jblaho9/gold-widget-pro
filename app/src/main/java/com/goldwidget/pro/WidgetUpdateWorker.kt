@@ -4,6 +4,7 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.graphics.Color
+import android.util.Log
 import android.view.View
 import android.widget.RemoteViews
 import androidx.work.Worker
@@ -27,6 +28,40 @@ class WidgetUpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
     }
 
     companion object {
+
+        // Fetch fresh data and update all widgets.
+        // Fast path: fetch gold first and render immediately (gives instant timestamp feedback).
+        // Slow path: then fetch WS trade data and re-render if successful.
+        fun fetchAndUpdateAll(ctx: Context) {
+            // Fast path — update with fresh gold + cached trades right away
+            val data = GoldApiService.fetchGoldData(ctx)
+            val cachedTrades = loadTradeCache(ctx)
+            if (data != null) {
+                updateAllWidgets(ctx, data, cachedTrades)
+            } else {
+                // Market closed / network failed — bump timestamp so refresh is visible
+                val cached = loadCache(ctx) ?: return
+                updateAllWidgets(ctx, cached.copy(timestamp = System.currentTimeMillis()), cachedTrades)
+                // Do NOT return — trades exist even when market is closed, WS must still run
+            }
+
+            // Slow path — fetch fresh trade data and re-render if WS succeeds
+            // Trades can be open on weekends / outside market hours, so always run this.
+            val token     = CTraderApiService.getValidToken(ctx)
+            val accountId = TokenManager.getAccountId(ctx)
+            Log.d("GoldWidget", "trade fetch: token=${token?.take(8) ?: "NULL"} accountId=$accountId")
+            if (token != null && accountId != null) {
+                val raw = CTraderApiService.getPositions(token, accountId)
+                Log.d("GoldWidget", "getPositions raw=${raw?.size ?: "NULL"} lastError=${CTraderApiService.lastError}")
+                val freshTrades = raw?.filter { it.symbol.contains("XAU", ignoreCase = true) }
+                Log.d("GoldWidget", "freshTrades after filter=${freshTrades?.size ?: "NULL"}")
+                if (freshTrades != null) {
+                    val displayData = data ?: loadCache(ctx) ?: return
+                    updateAllWidgets(ctx, displayData, freshTrades)
+                }
+                // freshTrades == null → WS failed, cached trades already shown, no overwrite
+            }
+        }
 
         private const val CACHE_PREFS = "gold_widget_cache"
         // ── Gold data cache ───────────────────────────────────────────────
@@ -58,7 +93,7 @@ class WidgetUpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
                 previousClose = p.getFloat("prev",  price.toFloat()).toDouble(),
                 changePercent = p.getFloat("change_pct", 0f).toDouble(),
                 timestamp     = p.getLong("timestamp", System.currentTimeMillis()),
-                marketClosed  = p.getBoolean("market_closed", false)
+                marketClosed  = GoldApiService.isMarketClosed()
             )
         }
 
@@ -76,9 +111,11 @@ class WidgetUpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
                     .putString("trade_side",     t.side)
                     .putFloat("trade_lots",      t.volumeLots.toFloat())
                     .putFloat("trade_entry",     t.entryPrice.toFloat())
-                    .putFloat("trade_sl",        t.stopLoss.toFloat())
-                    .putFloat("trade_tp",        t.takeProfit.toFloat())
-                    .putInt("trade_count",       trades.size)
+                    .putFloat("trade_sl",         t.stopLoss.toFloat())
+                    .putFloat("trade_tp",         t.takeProfit.toFloat())
+                    .putFloat("trade_swap",       t.swap.toFloat())
+                    .putFloat("trade_commission", t.commission.toFloat())
+                    .putInt("trade_count",        trades.size)
             }
             edit.apply()
         }
@@ -93,8 +130,8 @@ class WidgetUpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
                     side       = p.getString("trade_side", "BUY") ?: "BUY",
                     volumeLots = p.getFloat("trade_lots", 0f).toDouble(),
                     entryPrice = p.getFloat("trade_entry", 0f).toDouble(),
-                    swap       = 0.0,
-                    commission = 0.0,
+                    swap       = p.getFloat("trade_swap", 0f).toDouble(),
+                    commission = p.getFloat("trade_commission", 0f).toDouble(),
                     openTime   = 0L,
                     stopLoss   = p.getFloat("trade_sl", 0f).toDouble(),
                     takeProfit = p.getFloat("trade_tp", 0f).toDouble()
@@ -163,18 +200,16 @@ class WidgetUpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
         fun buildTradeViews(ctx: Context, data: GoldData, trades: List<TradeData>): RemoteViews {
             val views = RemoteViews(ctx.packageName, R.layout.widget_trade)
             views.setTextViewText(R.id.tv_price, GoldApiService.formatPrice(data.price))
-            applyChangePill(ctx, views, data)
             views.setTextViewText(R.id.tv_high, GoldApiService.formatShortPrice(data.dayHigh))
             views.setTextViewText(R.id.tv_low, GoldApiService.formatShortPrice(data.dayLow))
-            views.setTextViewText(R.id.tv_open, GoldApiService.formatShortPrice(data.open))
-            views.setTextViewText(R.id.tv_prev_close, GoldApiService.formatShortPrice(data.previousClose))
             views.setTextViewText(R.id.tv_updated, "Updated " + GoldApiService.formatTime(data.timestamp))
             views.setOnClickPendingIntent(R.id.btn_refresh, TradeGoldWidget.refreshPendingIntent(ctx))
+            views.setViewVisibility(R.id.iv_market_closed, if (data.marketClosed) View.VISIBLE else View.GONE)
 
             if (trades.isNotEmpty()) {
                 val t = trades[0]
                 val livePrice = if (CTraderApiService.lastLiveBid > 0) CTraderApiService.lastLiveBid else data.price
-                val pnl = t.unrealizedPnl(livePrice)
+                val pnl = t.unrealizedPnl(livePrice) + t.swap + t.commission
                 val pnlSign = if (pnl >= 0) "+" else ""
                 val pnlColor = if (pnl >= 0) ctx.getColor(R.color.price_up)
                                else ctx.getColor(R.color.price_down)
@@ -182,15 +217,38 @@ class WidgetUpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
                                 else ctx.getColor(R.color.price_down)
                 val countSuffix = if (trades.size > 1) " (+${trades.size - 1})" else ""
 
+                // Header pill → net P&L
+                val pnlPillRes = if (pnl >= 0) R.drawable.pill_up else R.drawable.pill_down
+                views.setInt(R.id.tv_change, "setBackgroundResource", pnlPillRes)
+                views.setTextViewText(R.id.tv_change, "$pnlSign${"%.2f".format(pnl)}")
+                views.setTextColor(R.id.tv_change, pnlColor)
+
+                // % slot → ±% from entry price, coloured same as P&L
+                val entryPct = if (t.entryPrice > 0) (livePrice - t.entryPrice) / t.entryPrice * 100.0 else 0.0
+                val pctSign = if (entryPct >= 0) "+" else ""
+                views.setTextViewText(R.id.tv_sl, "$pctSign${"%.2f".format(entryPct)}%")
+                views.setTextColor(R.id.tv_sl, pnlColor)
+
+                // SL slot → SL price
+                views.setTextViewText(R.id.tv_tp, if (t.stopLoss > 0) GoldApiService.formatShortPrice(t.stopLoss) else "----")
+
                 views.setTextViewText(R.id.tv_trade_side,   t.side)
                 views.setTextColor(R.id.tv_trade_side, sideColor)
                 views.setTextViewText(R.id.tv_trade_symbol, " ${t.symbol}$countSuffix")
                 views.setTextViewText(R.id.tv_trade_lots,   "${"%.2f".format(t.volumeLots)} lots")
                 views.setTextViewText(R.id.tv_trade_entry,  GoldApiService.formatPrice(t.entryPrice))
-                views.setTextViewText(R.id.tv_trade_pnl,    "$pnlSign${"%.2f".format(pnl)}")
-                views.setTextColor(R.id.tv_trade_pnl, pnlColor)
+
+                // TP slot → TP price
+                val dim = 0x60FFFFFF.toInt()
+                views.setTextViewText(R.id.tv_trade_pnl, if (t.takeProfit > 0) GoldApiService.formatShortPrice(t.takeProfit) else "----")
+                views.setTextColor(R.id.tv_trade_pnl, if (t.takeProfit > 0) 0xFFCCCCCC.toInt() else dim)
             } else {
-                val dim = ctx.getColor(R.color.price_up).let { 0x60FFFFFF.toInt() }
+                val dim = 0x60FFFFFF.toInt()
+                // No trade → fall back to day change pill
+                applyChangePill(ctx, views, data)
+                views.setTextViewText(R.id.tv_sl, "----")
+                views.setTextColor(R.id.tv_sl, dim)
+                views.setTextViewText(R.id.tv_tp, "----")
                 views.setTextViewText(R.id.tv_trade_side,   "----")
                 views.setTextColor(R.id.tv_trade_side, dim)
                 views.setTextViewText(R.id.tv_trade_symbol, "")

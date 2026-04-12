@@ -1,5 +1,6 @@
 package com.goldwidget.pro
 
+import android.app.AlertDialog
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
@@ -107,6 +108,16 @@ class MainActivity : AppCompatActivity() {
         if (first != null) {
             TokenManager.saveAccountInfo(this, first.accountId, first.brokerName,
                 first.balance, first.currency)
+        } else {
+            val msg = if (accounts == null) CTraderApiService.lastError
+                      else "No trading accounts found for this token"
+            runOnUiThread {
+                AlertDialog.Builder(this)
+                    .setTitle("API Error")
+                    .setMessage(msg)
+                    .setPositiveButton("OK", null)
+                    .show()
+            }
         }
         runOnUiThread { refreshUI() }
     }
@@ -145,6 +156,39 @@ class MainActivity : AppCompatActivity() {
 
         btnConn.setOnClickListener { showOAuth() }
         btnDisc.setOnClickListener { disconnect() }
+
+        val btnTest  = findViewById<Button>(R.id.btn_test_trades)
+        val tvDebug  = findViewById<TextView>(R.id.tv_trade_debug)
+        if (connected) {
+            btnTest.visibility  = View.VISIBLE
+            tvDebug.visibility  = View.VISIBLE
+            btnTest.setOnClickListener {
+                tvDebug.text = "Fetching…"
+                Thread {
+                    val token     = CTraderApiService.getValidToken(this)
+                    val accountId = TokenManager.getAccountId(this)
+                    val sb = StringBuilder()
+                    sb.appendLine("token: ${token?.take(12) ?: "NULL"}")
+                    sb.appendLine("accountId: $accountId")
+                    // Step 1: verify app auth works
+                    val diag = CTraderApiService.diagWebSocket()
+                    sb.appendLine("--- app auth diag ---")
+                    sb.appendLine(diag)
+                    // Step 2: full positions fetch
+                    if (token != null && accountId != null) {
+                        sb.appendLine("--- positions ---")
+                        val positions = CTraderApiService.getPositions(token, accountId)
+                        sb.appendLine("count: ${positions?.size ?: "NULL"}")
+                        sb.appendLine("lastError: ${CTraderApiService.lastError.ifEmpty { "none" }}")
+                        positions?.forEach { sb.appendLine("  ${it.side} ${it.symbol} ${it.volumeLots}L @ ${it.entryPrice}") }
+                    }
+                    runOnUiThread { tvDebug.text = sb.toString() }
+                }.start()
+            }
+        } else {
+            btnTest.visibility = View.GONE
+            tvDebug.visibility = View.GONE
+        }
     }
 
     private fun setStatus(text: String) {
