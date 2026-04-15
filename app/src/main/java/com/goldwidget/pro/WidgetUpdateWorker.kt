@@ -237,6 +237,7 @@ class WidgetUpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
                 views.setTextViewText(R.id.tv_trade_symbol, " ${t.symbol}$countSuffix")
                 views.setTextViewText(R.id.tv_trade_lots,   "${"%.2f".format(t.volumeLots)} lots")
                 views.setTextViewText(R.id.tv_trade_entry,  GoldApiService.formatPrice(t.entryPrice))
+                views.setInt(R.id.root_layout, "setBackgroundResource", pnlBgDrawable(t, livePrice))
 
                 // TP slot → TP price
                 val dim = 0x60FFFFFF.toInt()
@@ -244,8 +245,11 @@ class WidgetUpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
                 views.setTextColor(R.id.tv_trade_pnl, if (t.takeProfit > 0) 0xFFCCCCCC.toInt() else dim)
             } else {
                 val dim = 0x60FFFFFF.toInt()
-                // No trade → fall back to day change pill
-                applyChangePill(ctx, views, data)
+                // No trade → show --- in the change pill (don't show day % change)
+                views.setInt(R.id.tv_change, "setBackgroundResource", R.drawable.pill_closed)
+                views.setTextViewText(R.id.tv_change, "---")
+                views.setTextColor(R.id.tv_change, dim)
+                views.setViewVisibility(R.id.iv_market_closed, if (data.marketClosed) View.VISIBLE else View.GONE)
                 views.setTextViewText(R.id.tv_sl, "----")
                 views.setTextColor(R.id.tv_sl, dim)
                 views.setTextViewText(R.id.tv_tp, "----")
@@ -256,6 +260,7 @@ class WidgetUpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
                 views.setTextViewText(R.id.tv_trade_entry,  "----")
                 views.setTextViewText(R.id.tv_trade_pnl,    "----")
                 views.setTextColor(R.id.tv_trade_pnl, dim)
+                views.setInt(R.id.root_layout, "setBackgroundResource", R.drawable.widget_background)
             }
             return views
         }

@@ -190,10 +190,16 @@ object CTraderApiService {
                 val pos = arr.getJSONObject(i)
                 val td  = pos.optJSONObject("tradeData") ?: return@mapNotNull null
                 val sideRaw = td.optString("tradeSide", "BUY")
+                // tradeSide can be string ("SELL"/"BUY") or numeric enum (BUY=1, SELL=2)
+                val side = when {
+                    sideRaw.contains("SELL", ignoreCase = true) -> "SELL"
+                    sideRaw == "2" -> "SELL"
+                    else -> "BUY"
+                }
                 TradeData(
                     positionId = pos.optString("positionId", ""),
                     symbol     = "XAUUSD",
-                    side       = if (sideRaw.contains("SELL", ignoreCase = true)) "SELL" else "BUY",
+                    side       = side,
                     volumeLots = td.optLong("volume", 0) / 10000.0,
                     entryPrice = pos.optDouble("price", 0.0),
                     swap       = pos.optDouble("swap", 0.0) / 100.0,

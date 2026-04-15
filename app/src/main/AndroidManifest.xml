@@ -73,12 +73,13 @@
                 android:resource="@xml/widget_pnl_simple_info" />
         </receiver>
 
-        <!-- Refresh widget on phone unlock -->
+        <!-- Refresh widget on phone unlock / screen wake -->
         <receiver
             android:name=".ScreenUnlockReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.USER_PRESENT" />
+                <action android:name="android.intent.action.SCREEN_ON" />
             </intent-filter>
         </receiver>
 
