@@ -19,12 +19,12 @@
             android:padding="24dp">
 
             <ImageView
-                android:layout_width="64dp"
-                android:layout_height="64dp"
-                android:src="@drawable/ic_gold"
+                android:layout_width="96dp"
+                android:layout_height="96dp"
+                android:src="@drawable/ic_launcher_foreground"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="16dp"
-                android:layout_marginBottom="12dp" />
+                android:layout_marginBottom="4dp" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -145,7 +145,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="1. Tap &#34;Connect cTrader Account&#34; and log in with your cTrader credentials.\n\n2. Add the &#34;Gold + Trade&#34; widget (4×3) to your home screen.\n\n3. The widget refreshes automatically every 15 minutes and shows:\n   • Live XAUUSD spot price\n   • Day high / low / open / prev close\n   • Your open XAUUSD position (side, lots, entry, P&amp;L)\n\n4. Tap the refresh button on the widget for an instant update."
+                android:text="1. Tap &#34;Connect cTrader Account&#34; and log in with your cTrader credentials.\n\n2. Long-press your home screen and add a widget:\n   • Gold Simple (2×2) — price + day change\n   • Gold Detailed (4×2) — price + day stats\n   • Gold + Trade (4×3) — price + open position\n   • Gold P&amp;L (2×2) — price + P&amp;L with SL/TP colour\n\n3. Widgets refresh automatically every 5 minutes and on every screen wake. They show:\n   • Live XAUUSD spot price\n   • Day high / low / open / prev close\n   • Your open XAUUSD position (side, lots, entry, P&amp;L)\n\n4. Tap the refresh icon on any widget for an instant update."
                 android:textColor="#80FFFFFF"
                 android:textSize="13sp"
                 android:lineSpacingExtra="2dp"
