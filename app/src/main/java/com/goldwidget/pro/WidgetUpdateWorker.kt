@@ -39,9 +39,11 @@ class WidgetUpdateWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, p
             if (data != null) {
                 updateAllWidgets(ctx, data, cachedTrades)
             } else {
-                // Market closed / network failed — bump timestamp so refresh is visible
+                // Market closed / network failed — show cached price with its original timestamp.
+                // Do NOT bump the timestamp: the price didn't actually refresh, so showing a new
+                // time would be misleading (e.g. "TCP error" with a fresh-looking time).
                 val cached = loadCache(ctx) ?: return
-                updateAllWidgets(ctx, cached.copy(timestamp = System.currentTimeMillis()), cachedTrades)
+                updateAllWidgets(ctx, cached, cachedTrades)
                 // Do NOT return — trades exist even when market is closed, WS must still run
             }
 

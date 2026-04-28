@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Gold bars logo sized for in-app use (no adaptive icon safe-zone padding) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="72dp"
+    android:height="64dp"
+    android:viewportWidth="56"
+    android:viewportHeight="50">
+
+    <!-- Back bar (darker gold) -->
+    <path
+        android:fillColor="#C8960C"
+        android:pathData="M4,0 L46,0 A4,4 0 0,1 50,4 L50,22 A4,4 0 0,1 46,26 L4,26 A4,4 0 0,1 0,22 L0,4 A4,4 0 0,1 4,0 Z" />
+
+    <!-- Shine on back bar -->
+    <path
+        android:fillColor="#FFE070"
+        android:fillAlpha="0.35"
+        android:pathData="M4,0 L46,0 A4,4 0 0,1 50,4 L50,6 L0,6 L0,4 A4,4 0 0,1 4,0 Z" />
+
+    <!-- Shadow gap -->
+    <path
+        android:fillColor="#0A0800"
+        android:fillAlpha="0.55"
+        android:pathData="M0,24 L50,24 L50,27 L0,27 Z" />
+
+    <!-- Front bar (bright gold) -->
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M6,24 L48,24 A4,4 0 0,1 52,28 L52,46 A4,4 0 0,1 48,50 L6,50 A4,4 0 0,1 2,46 L2,28 A4,4 0 0,1 6,24 Z" />
+
+    <!-- Shine on front bar -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.18"
+        android:pathData="M6,24 L48,24 A4,4 0 0,1 52,28 L52,31 L2,31 L2,28 A4,4 0 0,1 6,24 Z" />
+
+    <!-- Bottom shadow on front bar -->
+    <path
+        android:fillColor="#000000"
+        android:fillAlpha="0.10"
+        android:pathData="M2,44 L52,44 L52,46 A4,4 0 0,1 48,50 L6,50 A4,4 0 0,1 2,46 Z" />
+
+</vector>
