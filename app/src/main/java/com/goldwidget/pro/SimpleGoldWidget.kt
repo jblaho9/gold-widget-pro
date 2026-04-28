@@ -102,7 +102,7 @@ class SimpleGoldWidget : AppWidgetProvider() {
                 .cancel(alarmPendingIntent(ctx))
         }
 
-        private fun alarmPendingIntent(ctx: Context): PendingIntent {
+        fun alarmPendingIntent(ctx: Context): PendingIntent {
             val intent = Intent(ctx, SimpleGoldWidget::class.java).apply {
                 action = ACTION_ALARM
             }
